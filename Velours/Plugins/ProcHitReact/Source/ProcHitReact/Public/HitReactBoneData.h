@@ -1,0 +1,25 @@
+﻿
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Engine/DataAsset.h"
+#include "HitReactParams.h"
+#include "HitReactBoneData.generated.h"
+
+/**
+ * Contains per-bone data that can be reused regardless of the chosen profile
+ * Joined with the profile's params
+ */
+UCLASS()
+class PROCHITREACT_API UHitReactBoneData : public UDataAsset
+{
+	GENERATED_BODY()
+
+public:
+	/**
+	 * Bone-specific override params
+	 * Will be joined with the profile's params
+	 */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Bones)
+	TMap<FName, FHitReactBoneOverride> BoneOverrides;
+};

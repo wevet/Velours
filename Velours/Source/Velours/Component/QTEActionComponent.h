@@ -1,0 +1,101 @@
+// Copyright 2022 wevet works All Rights Reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Components/ActorComponent.h"
+#include "Blueprint/UserWidget.h"
+#include "Character/CharacterSystemTypes.h"
+#include "AsyncComponentInterface.h"
+#include "Engine/StreamableManager.h"
+#include "Logging/LogMacros.h"
+#include "QTEActionComponent.generated.h"
+
+class UWidgetComponent;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FQTEBeginDelegate);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FQTEEndDelegate, bool, InSuccess);
+
+DECLARE_LOG_CATEGORY_EXTERN(LogQTE, All, All)
+
+UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
+class VELOURS_API UQTEActionComponent : public UActorComponent, public IAsyncComponentInterface
+{
+	GENERATED_BODY()
+
+public:	
+	UQTEActionComponent(const FObjectInitializer& ObjectInitializer);
+	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+
+protected:
+	virtual void BeginPlay() override;
+
+public:
+	virtual void RequestAsyncLoad() override;
+
+public:
+	UPROPERTY(BlueprintAssignable, Category = "QTE|Callback")
+	FQTEBeginDelegate QTEBeginDelegate;
+
+	UPROPERTY(BlueprintAssignable, Category = "QTE|Callback")
+	FQTEEndDelegate QTEEndDelegate;
+
+	UFUNCTION(BlueprintCallable, Category = QTE)
+	float GetTimerProgress() const;
+
+	UFUNCTION(BlueprintCallable, Category = QTE)
+	float GetPressCountProgress() const;
+
+	UFUNCTION(BlueprintCallable, Category = QTE)
+	bool IsPlaying() const;
+
+	void InputPress();
+
+	void Begin(const EQTEType InQTEType);
+	void End();
+	void Abort();
+
+	void SetDurationSeconds(const FVector TimerValue);
+	void SetParameters(const float InDurationSeconds, const int32 InRequiredPressesCount);
+
+	void ShowQTEWidgetComponent(const bool NewVisibility);
+
+	EQTEType GetCurQTEType() const { return CurQTEType; }
+
+protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "QTE")
+	TSoftClassPtr<class UUserWidget> QTEWidgetClass;
+
+	/// <summary>
+	/// @TODO
+	/// EQTEType get phase types and data assets create..
+	/// </summary>
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "QTE")
+	FQTEData QTEData;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "QTE")
+	bool bQTEActivated{ false };
+
+
+private:
+	void Tick_Internal(const float DeltaTime);
+	void EndInternal();
+	void SuccessAction();
+	void FailAction();
+
+	void Begin_Internal();
+	void End_Internal();
+
+	bool bQTEEndCallbackResult{ false };
+
+	EQTEType CurQTEType{ EQTEType::None };
+	TWeakObjectPtr<class UWidgetComponent> QTEWidgetComponent;
+	TSharedPtr<FStreamableHandle>  ComponentStreamableHandle;
+
+	void OnLoadWidgetComplete();
+
+	void FindWidgetComponent();
+};
+
+
