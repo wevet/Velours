@@ -61,6 +61,8 @@ public class Velours : ModuleRules
 				"StateTreeModule",
 				// custom plugin
 				"WvAbilitySystem",
+				"Mover",
+				"NetworkPrediction",
 			}
 		);
 

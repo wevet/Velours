@@ -3,7 +3,6 @@
 
 #include "BasePawn.h"
 #include "Misc/WvCommonUtils.h"
-#include "Component/CharacterMovementHelperComponent.h"
 #include "Component/WvSkeletalMeshComponent.h"
 #include "Component/InventoryComponent.h"
 #include "Component/CombatComponent.h"
@@ -20,6 +19,7 @@
 
 #include "Ability/WvInheritanceAttributeSet.h"
 #include "WvAbilitySystemBlueprintFunctionLibrary.h"
+#include "Velours.h"
 
 // built in
 #include "Components/LODSyncComponent.h"
@@ -46,28 +46,47 @@
 #include "Algo/Transform.h"
 #include "ChooserFunctionLibrary.h"
 #include "BehaviorTree/BehaviorTree.h"
+#include "Net/Core/PushModel/PushModel.h"
+
+// mover
+#include "DefaultMovementSet/CharacterMoverComponent.h"
+#include "MoveLibrary/MovementMixer.h"
+
+DEFINE_LOG_CATEGORY(LogBaseCharacter)
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(BasePawn)
+
+
+FName ABasePawn::MeshComponentName(TEXT("CharacterMesh0"));
+FName ABasePawn::CapsuleComponentName(TEXT("CollisionCylinder"));
+
+namespace CharacterHelper
+{
+	const bool HasTag(const UAbilitySystemComponent* ASC, const FGameplayTag& TagToCheck)
+	{
+		return ASC && ASC->HasMatchingGameplayTag(TagToCheck);
+	}
+}
+
 
 ABasePawn::ABasePawn(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 	PrimaryActorTick.bCanEverTick = true;
 
-	//bUseControllerRotationPitch = false;
-	//bUseControllerRotationYaw = false;
-	//bUseControllerRotationRoll = false;
-	//AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
+	bUseControllerRotationPitch = false;
+	bUseControllerRotationYaw = false;
+	bUseControllerRotationRoll = false;
+	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 
 	SetNetCullDistanceSquared(900000000.0f);
 	SetReplicateMovement(true);
 
+	AbilitySystemComponentClass = UWvAbilitySystemComponent::StaticClass();
+	bReplicates = true;
+
 	// motion warping
 	MotionWarpingComponent = ObjectInitializer.CreateDefaultSubobject<UMotionWarpingComponent>(this, TEXT("MotionWarpingComponent"));
 	MotionWarpingComponent->bSearchForWindowsInAnimsWithinMontages = false;
-
-	// asc
-	WvAbilitySystemComponent = ObjectInitializer.CreateDefaultSubobject<UWvAbilitySystemComponent>(this, TEXT("WvAbilitySystemComponent"));
-	WvAbilitySystemComponent->bAutoActivate = 1;
 
 	// managed item, weapon class
 	ItemInventoryComponent = ObjectInitializer.CreateDefaultSubobject<UInventoryComponent>(this, TEXT("InventoryComponent"));
@@ -89,9 +108,6 @@ ABasePawn::ABasePawn(const FObjectInitializer& ObjectInitializer) : Super(Object
 	PawnNoiseEmitterComponent = ObjectInitializer.CreateDefaultSubobject<UPawnNoiseEmitterComponent>(this, TEXT("PawnNoiseEmitterComponent"));
 	PawnNoiseEmitterComponent->bAutoActivate = 1;
 
-	//CharacterMovementHelperComponent = ObjectInitializer.CreateDefaultSubobject<UCharacterMovementHelperComponent>(this, TEXT("CharacterMovementHelperComponent"));
-	//CharacterMovementHelperComponent->bAutoActivate = 1;
-
 	MinimapMarkerComponent = ObjectInitializer.CreateDefaultSubobject<UMinimapMarkerComponent>(this, TEXT("MinimapMarkerComponent"));
 	MinimapMarkerComponent->bAutoActivate = 1;
 
@@ -106,16 +122,6 @@ void ABasePawn::BeginPlay()
 {
 	Super::BeginPlay();
 
-	TArray<UActorComponent*> Components;
-	GetComponents(Components);
-
-	for (UActorComponent* Comp : Components)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("[%s] Component: %s / Class: %s"),
-			*GetName(),
-			*Comp->GetName(),
-			*Comp->GetClass()->GetName());
-	}
 }
 
 
@@ -126,14 +132,20 @@ void ABasePawn::Tick(float DeltaTime)
 
 void ABasePawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
+	WEVET_COMMENT("CharacterInstanceSubsystem API")
+	UCharacterInstanceSubsystem::Get()->RemoveAICharacter(this);
+
+	//FTimerManager& TM = GetWorld()->GetTimerManager();
+	//TM.ClearTimer(Ragdoll_TimerHandle);
+
+	if (IsValid(AbilitySystemComponent))
+	{
+		AbilitySystemComponent->AbilityFailedCallbacks.Remove(AbilityFailedDelegateHandle);
+	}
+
 	Super::EndPlay(EndPlayReason);
 }
 
-
-void ABasePawn::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-}
 
 void ABasePawn::OnConstruction(const FTransform& Transform)
 {
@@ -152,28 +164,55 @@ void ABasePawn::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 
-	UE_LOG(LogTemp, Warning, TEXT("PostInitializeComponents: %s Class=%s"),
-		*GetName(),
-		*GetClass()->GetName());
+	UCharacterMoverComponent* CharacterMover = FindComponentByClass<UCharacterMoverComponent>();
 
-	TArray<UActorComponent*> Components;
-	GetComponents(Components);
-
-	for (UActorComponent* Comp : Components)
+	if (CharacterMover && !CharacterMover->MovementMixer)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("  Component: %s / %s"),
-			*Comp->GetName(),
-			*Comp->GetClass()->GetName());
+		CharacterMover->MovementMixer = NewObject<UMovementMixer>(CharacterMover, TEXT("RuntimeMovementMixer"));
+		UE_LOG(LogBaseCharacter, Warning, TEXT("[%s] Created MovementMixer for %s"), *GetName(), *CharacterMover->GetName());
+	}
+
+
+	if (HasAuthority() && AbilitySystemCreationPolicy == EAbilitySystemCreationPolicy::Always)
+	{
+		RequestAbilitySystemWarmup(EAbilitySystemLoadReason::Always);
 	}
 }
 
 void ABasePawn::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	FDoRepLifetimeParams Params;
+	Params.bIsPushBased = true;
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(ABasePawn, ReplicatedAbilitySystemComponent, Params);
+
+	DOREPLIFETIME_WITH_PARAMS_FAST(ABasePawn, AbilitySystemLoadState, Params);
+	DOREPLIFETIME_WITH_PARAMS_FAST(ABasePawn, LastAbilitySystemLoadReason, Params);
+
+	DOREPLIFETIME(ABasePawn, MyTeamID);
+	DOREPLIFETIME(ABasePawn, ReplicatedAcceleration);
 }
+
 
 void ABasePawn::PreReplication(IRepChangedPropertyTracker& ChangedPropertyTracker)
 {
+	Super::PreReplication(ChangedPropertyTracker);
+
+
+	if (AbilitySystemCreationPolicy == EAbilitySystemCreationPolicy::Never)
+	{
+		return;
+	}
+
+	if (!ReplicatedAbilitySystemComponent && AbilitySystemComponent)
+	{
+		ReplicatedAbilitySystemComponent = AbilitySystemComponent;
+		MARK_PROPERTY_DIRTY_FROM_NAME(ABasePawn, ReplicatedAbilitySystemComponent, this);
+	}
 }
+
 
 #if WITH_EDITOR
 void ABasePawn::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
@@ -181,10 +220,6 @@ void ABasePawn::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEve
 }
 #endif
 
-UAbilitySystemComponent* ABasePawn::GetAbilitySystemComponent() const
-{
-	return nullptr;
-}
 
 const FWvAbilitySystemAvatarData& ABasePawn::GetAbilitySystemData()
 {
@@ -193,6 +228,47 @@ const FWvAbilitySystemAvatarData& ABasePawn::GetAbilitySystemData()
 
 void ABasePawn::InitAbilitySystemComponentByData(UWvAbilitySystemComponentBase* ASC)
 {
+	IWvAbilitySystemAvatarInterface::InitAbilitySystemComponentByData(ASC);
+
+	// Read DataTable of locomotion system
+	const FCustomWvAbilitySystemAvatarData& Data = GetCustomWvAbilitySystemData();
+
+	TArray<TSoftObjectPtr<UDataTable>> AbilityTables;
+	AbilityTables.Add(Data.LocomotionAbilityTable);
+	AbilityTables.Add(Data.FieldAbilityTable);
+	AbilityTables += Data.FunctionAbilityTables;
+
+	for (int32 Index = 0; Index < AbilityTables.Num(); Index++)
+	{
+		TSoftObjectPtr<UDataTable> SoftAbilityTable = AbilityTables[Index];
+
+		if (SoftAbilityTable.IsNull())
+		{
+			continue;
+		}
+
+		const FSoftObjectPath TablePath = SoftAbilityTable.ToSoftObjectPath();
+		const FString TablePathString = TablePath.ToString();
+
+		UDataTable* AbilityTable = Cast<UDataTable>(StaticLoadObject(UDataTable::StaticClass(), nullptr, *TablePathString));
+		if (!AbilityTable)
+		{
+			continue;
+		}
+
+		TArray<FWvAbilityRow*> Rows;
+		AbilityTable->GetAllRows(SoftAbilityTable.GetAssetName(), Rows);
+
+		for (int32 JIndex = 0; JIndex < Rows.Num(); ++JIndex)
+		{
+			const FWvAbilityRow* AbilityRow = Rows[JIndex];
+			AbilitySystemComponent->AddRegisterAbilityDA(AbilityRow->AbilityData);
+		}
+	}
+
+	AbilitySystemComponent->GiveAllRegisterAbility();
+	UE_LOG(LogBaseCharacter, Log, TEXT("[%s] : %s"), *FString(__FUNCTION__), *GetNameSafe(this));
+
 }
 
 UBehaviorTree* ABasePawn::GetBehaviorTree() const
@@ -297,14 +373,49 @@ bool ABasePawn::IsSprintingMovement() const
 
 void ABasePawn::DoAttack()
 {
+	UWvAbilitySystemComponent* ASC = RequestAbilitySystemHot(EAbilitySystemLoadReason::AttackStart);
+	if (!ASC)
+	{
+		return;
+	}
+
+	if (ASC->HasMatchingGameplayTag(TAG_Character_ActionMelee_Forbid))
+	{
+		UE_LOG(LogBaseCharacter, Warning, TEXT("has tag TAG_Character_StateMelee_Forbid => %s"), *FString(__FUNCTION__));
+		return;
+	}
+
+	const auto Weapon = ItemInventoryComponent->GetEquipWeapon();
+	if (Weapon)
+	{
+		if (Weapon->IsAvailable())
+		{
+			const FGameplayTag TriggerTag = Weapon->GetPluralInputTriggerTag();
+			ASC->TryActivateAbilityByTag(TriggerTag);
+		}
+	}
 }
 
 void ABasePawn::DoResumeAttack()
 {
+	UWvAbilitySystemComponent* ASC = RequestAbilitySystemWarmup(EAbilitySystemLoadReason::AbilityActivation);
+	if (!ASC)
+	{
+		return;
+	}
+
+	ASC->RemoveGameplayTag(TAG_Character_ActionMelee_Forbid, 1);
 }
 
 void ABasePawn::DoStopAttack()
 {
+	UWvAbilitySystemComponent* ASC = RequestAbilitySystemWarmup(EAbilitySystemLoadReason::AbilityActivation);
+	if (!ASC)
+	{
+		return;
+	}
+
+	ASC->AddGameplayTag(TAG_Character_ActionMelee_Forbid, 1);
 }
 
 void ABasePawn::DoBulletAttack()
@@ -328,6 +439,20 @@ bool ABasePawn::IsCinematic() const
 	return false;
 }
 
+void ABasePawn::DoKill(const bool bIsForceKill)
+{
+
+}
+
+bool ABasePawn::IsLeader() const
+{
+	if (AbilitySystemComponent)
+	{
+		return AbilitySystemComponent->HasMatchingGameplayTag(TAG_Character_AI_Leader);
+	}
+	return false;
+}
+
 void ABasePawn::SetAIActionState(const EAIActionState NewAIActionState)
 {
 }
@@ -348,11 +473,19 @@ bool ABasePawn::CanBeSeenFrom(const FVector& ObserverLocation, FVector& OutSeenL
 
 void ABasePawn::NotifyControllerChanged()
 {
-}
+	const FGenericTeamId OldTeamId = GetGenericTeamId();
 
-UWvAbilitySystemComponent* ABasePawn::GetWvAbilitySystemComponent() const
-{
-	return WvAbilitySystemComponent;
+	Super::NotifyControllerChanged();
+
+	// Update our team ID based on the controller
+	if (HasAuthority() && (Controller != nullptr))
+	{
+		if (IWvAbilityTargetInterface* ControllerWithTeam = Cast<IWvAbilityTargetInterface>(Controller))
+		{
+			MyTeamID = ControllerWithTeam->GetGenericTeamId();
+			ConditionalBroadcastTeamChanged(this, OldTeamId, MyTeamID);
+		}
+	}
 }
 
 UMotionWarpingComponent* ABasePawn::GetMotionWarpingComponent() const
@@ -395,3 +528,316 @@ void ABasePawn::OnRep_ReplicatedAcceleration()
 {
 	//
 }
+
+const FCustomWvAbilitySystemAvatarData& ABasePawn::GetCustomWvAbilitySystemData()
+{
+	return AbilitySystemData;
+}
+
+float ABasePawn::GetSkillToWidget() const
+{
+	return StatusComponent->GetSkillToWidget();
+}
+
+float ABasePawn::GetHealthToWidget() const
+{
+	return StatusComponent->GetHealthToWidget();
+}
+
+bool ABasePawn::IsBotCharacter() const
+{
+	return UWvCommonUtils::IsBot(GetController());
+}
+
+void ABasePawn::BeginDrive()
+{
+	UWvAbilitySystemComponent* ASC = RequestAbilitySystemWarmup(EAbilitySystemLoadReason::Interact);
+	if (!ASC)
+	{
+		return;
+	}
+
+
+}
+
+void ABasePawn::EndDrive()
+{
+	UWvAbilitySystemComponent* ASC = RequestAbilitySystemWarmup(EAbilitySystemLoadReason::Interact);
+	if (!ASC)
+	{
+		return;
+	}
+}
+
+bool ABasePawn::IsVehicleDriving() const
+{
+	const UWvAbilitySystemComponent* ASC = GetWvAbilitySystemComponent();
+	return ASC && ASC->HasMatchingGameplayTag(TAG_Vehicle_State_Drive);
+}
+
+void ABasePawn::SetAnimRootMotionTranslationScale(float InAnimRootMotionTranslationScale)
+{
+	AnimRootMotionTranslationScale = InAnimRootMotionTranslationScale;
+}
+
+float ABasePawn::GetAnimRootMotionTranslationScale() const
+{
+	return AnimRootMotionTranslationScale;
+}
+
+#pragma region Melee
+bool ABasePawn::IsMeleePlaying() const
+{
+	if (GetWvAbilitySystemComponent())
+	{
+		return AbilitySystemComponent->HasMatchingGameplayTag(TAG_Character_StateMelee);
+	}
+	return false;
+}
+
+
+#pragma endregion
+
+
+#pragma region Abilities
+UWvAbilitySystemComponent* ABasePawn::RequestAbilitySystemWarmup(EAbilitySystemLoadReason Reason)
+{
+	if (AbilitySystemCreationPolicy == EAbilitySystemCreationPolicy::Never)
+	{
+		return nullptr;
+	}
+
+	// Clients never create or change the ASC load state.
+	// They only use the ASC replicated from the server.
+	if (!HasAuthority())
+	{
+		return GetWvAbilitySystemComponent();
+	}
+
+	if (AbilitySystemLoadState == EAbilitySystemLoadState::Hot)
+	{
+		return AbilitySystemComponent;
+	}
+
+	UWvAbilitySystemComponent* ASC = EnsureAbilitySystemComponentCreated();
+
+	if (ASC)
+	{
+		SetAbilitySystemLoadState(EAbilitySystemLoadState::Warm, Reason);
+	}
+
+	return ASC;
+}
+
+UWvAbilitySystemComponent* ABasePawn::RequestAbilitySystemHot(EAbilitySystemLoadReason Reason)
+{
+	if (AbilitySystemCreationPolicy == EAbilitySystemCreationPolicy::Never)
+	{
+		return nullptr;
+	}
+
+	if (!HasAuthority())
+	{
+		return GetWvAbilitySystemComponent();
+	}
+
+	UWvAbilitySystemComponent* ASC = RequestAbilitySystemWarmup(Reason);
+
+	if (ASC)
+	{
+		SetAbilitySystemLoadState(EAbilitySystemLoadState::Hot, Reason);
+	}
+
+	return ASC;
+}
+
+
+UWvAbilitySystemComponent* ABasePawn::EnsureAbilitySystemComponentCreated()
+{
+	if (AbilitySystemComponent)
+	{
+		return AbilitySystemComponent;
+	}
+
+	if (!HasAuthority())
+	{
+		return nullptr;
+	}
+
+	if (AbilitySystemCreationPolicy == EAbilitySystemCreationPolicy::Never)
+	{
+		return nullptr;
+	}
+
+	if (!AbilitySystemComponentClass)
+	{
+		return nullptr;
+	}
+
+	CreateAbilitySystemComponent();
+	InitializeAbilitySystemComponent();
+	ForceNetUpdate();
+	return AbilitySystemComponent;
+}
+
+UAbilitySystemComponent* ABasePawn::GetAbilitySystemComponent() const
+{
+	if (AbilitySystemComponent)
+	{
+		return AbilitySystemComponent;
+	}
+
+	if (!HasAuthority())
+	{
+		return nullptr;
+	}
+
+	if (AbilitySystemCreationPolicy != EAbilitySystemCreationPolicy::Lazy)
+	{
+		return nullptr;
+	}
+
+	ABasePawn* MutableThis = const_cast<ABasePawn*>(this);
+	return MutableThis->EnsureAbilitySystemComponentCreated();
+}
+
+UWvAbilitySystemComponent* ABasePawn::GetWvAbilitySystemComponent() const
+{
+	return AbilitySystemComponent;
+}
+
+void ABasePawn::CreateAbilitySystemComponent()
+{
+	if (AbilitySystemComponent)
+	{
+		return;
+	}
+
+	AbilitySystemComponent = NewObject<UWvAbilitySystemComponent>(this, AbilitySystemComponentClass, TEXT("AbilitySystemComponent"));
+
+	check(AbilitySystemComponent);
+
+	AbilitySystemComponent->SetIsReplicated(true);
+	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
+	AbilitySystemComponent->RegisterComponent();
+
+	UE_LOG(LogBaseCharacter, Log, TEXT("[%s] Created for %s"), *FString(__FUNCTION__), *GetNameSafe(this));
+}
+
+void ABasePawn::InitializeAbilitySystemComponent()
+{
+	if (!AbilitySystemComponent || bAbilitySystemInitialized)
+	{
+		return;
+	}
+
+	bAbilitySystemInitialized = true;
+
+	AbilitySystemComponent->InitAbilityActorInfo(this, this);
+
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		AbilitySystemComponent->AddStartupGameplayAbilities();
+	}
+
+	// input component setup
+	PostAbilitySystemInitialize();
+
+	OnAbilitySystemAvailable.Broadcast(AbilitySystemComponent);
+	AbilityFailedDelegateHandle = AbilitySystemComponent->AbilityFailedCallbacks.AddUObject(this, &ThisClass::OnAbilityFailed_Callback);
+}
+
+/// <summary>
+/// client
+/// </summary>
+void ABasePawn::OnRep_ReplicatedAbilitySystemComponent()
+{
+	AbilitySystemComponent = ReplicatedAbilitySystemComponent;
+
+	if (AbilitySystemComponent)
+	{
+		InitializeAbilitySystemComponent();
+
+		// Pending attribute replication ‚ðŽg‚¤‚È‚ç‚±‚±‚Å“K—p
+		// ApplyPendingAttributesFromReplication();
+
+		UE_LOG(LogBaseCharacter, Log, TEXT("[%s]"), *FString(__FUNCTION__));
+	}
+}
+
+
+void ABasePawn::SetAbilitySystemLoadState(EAbilitySystemLoadState NewState, EAbilitySystemLoadReason Reason)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	if (AbilitySystemLoadState == NewState && LastAbilitySystemLoadReason == Reason)
+	{
+		return;
+	}
+
+	const EAbilitySystemLoadState OldState = AbilitySystemLoadState;
+
+	AbilitySystemLoadState = NewState;
+	LastAbilitySystemLoadReason = Reason;
+
+	MARK_PROPERTY_DIRTY_FROM_NAME(ABasePawn, AbilitySystemLoadState, this);
+	MARK_PROPERTY_DIRTY_FROM_NAME(ABasePawn, LastAbilitySystemLoadReason, this);
+
+	UE_LOG(
+		LogBaseCharacter,
+		Log,
+		TEXT("ASC LoadState changed. Actor=%s Old=%d New=%d Reason=%d"),
+		*GetNameSafe(this),
+		static_cast<uint8>(OldState),
+		static_cast<uint8>(NewState),
+		static_cast<uint8>(Reason)
+	);
+}
+
+void ABasePawn::OnRep_AbilitySystemLoadState(EAbilitySystemLoadState OldState)
+{
+	UE_LOG(
+		LogBaseCharacter,
+		Log,
+		TEXT("ASC LoadState replicated. Actor=%s Old=%d New=%d Reason=%d"),
+		*GetNameSafe(this),
+		static_cast<uint8>(OldState),
+		static_cast<uint8>(AbilitySystemLoadState),
+		static_cast<uint8>(LastAbilitySystemLoadReason)
+	);
+
+	// Notifications to the UI/Debug display and lightweight components are fine here.
+	// However, do not create a new ASC object on the client side.
+}
+
+void ABasePawn::OnAbilityFailed_Callback(const UGameplayAbility* Ability, const FGameplayTagContainer& GameplayTags)
+{
+}
+
+void ABasePawn::RequestAbilitySystemCooldown(EAbilitySystemLoadReason Reason)
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+
+	if (AbilitySystemLoadState == EAbilitySystemLoadState::Hot)
+	{
+		SetAbilitySystemLoadState(EAbilitySystemLoadState::Warm, Reason);
+	}
+}
+
+EAbilitySystemLoadState ABasePawn::GetAbilitySystemLoadState() const
+{
+	return AbilitySystemLoadState; 
+}
+
+EAbilitySystemLoadReason ABasePawn::GetLastAbilitySystemLoadReason() const
+{
+	return LastAbilitySystemLoadReason; 
+}
+#pragma endregion
+

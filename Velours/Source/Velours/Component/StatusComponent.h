@@ -48,12 +48,16 @@ public:
 
 	const bool SetFullSkill();
 
-	FCharacterInfo GetCharacterInfo() const;
+	const FCharacterInfo& GetCharacterInfo();
 
 protected:
 	virtual void BeginPlay() override;
 
 private:
+	void HandleAbilitySystemAvailable(UWvAbilitySystemComponent* InASC);
+	void TryBindExistingAbilitySystem();
+
+
 	UPROPERTY()
 	FCharacterBaseParameter CharacterBaseParameter;
 

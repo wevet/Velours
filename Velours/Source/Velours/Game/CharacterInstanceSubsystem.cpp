@@ -116,7 +116,7 @@ void UCharacterInstanceSubsystem::DoForceKill(bool bFindWorldActorIterator/* = f
 	{
 		if (IsValid(Character) && !Character->IsDead())
 		{
-			//Character->DoForceKill();
+			Character->DoKill(true);
 		}
 	}
 }
@@ -130,10 +130,10 @@ void UCharacterInstanceSubsystem::DoForceKillIgnorePlayer(bool bFindWorldActorIt
 
 	for (ABasePawn* Character : Characters)
 	{
-		//if (IsValid(Character) && Character->IsBotCharacter())
-		//{
-		//	Character->DoForceKill();
-		//}
+		if (IsValid(Character) && Character->IsBotCharacter())
+		{
+			Character->DoKill(true);
+		}
 	}
 }
 
@@ -217,10 +217,10 @@ TArray<ABasePawn*> UCharacterInstanceSubsystem::GetLeaderAgent() const
 	TArray<ABasePawn*> Result;
 	for (auto Character : Characters)
 	{
-		//if (IsValid(Character) && Character->IsLeader())
-		//{
-		//	Result.Add(Character);
-		//}
+		if (IsValid(Character) && Character->IsLeader())
+		{
+			Result.Add(Character);
+		}
 	}
 	return Result;
 }
@@ -230,10 +230,10 @@ TArray<ABasePawn*> UCharacterInstanceSubsystem::GetIgnorePlayerArray() const
 	TArray<ABasePawn*> Result;
 	for (auto Character : Characters)
 	{
-		//if (IsValid(Character) && Character->IsBotCharacter())
-		//{
-		//	Result.Add(Character);
-		//}
+		if (IsValid(Character) && Character->IsBotCharacter())
+		{
+			Result.Add(Character);
+		}
 	}
 	return Result;
 }
@@ -281,10 +281,10 @@ TArray<ABasePawn*> UCharacterInstanceSubsystem::GetPOIActors() const
 	TArray<ABasePawn*> Filtered;
 	ArrayExtension::FilterArray(Characters, Filtered, [](const ABasePawn* Char)
 	{
-		//if (const auto* Marker = Char->GetMinimapMarkerComponent())
-		//{
-		//	return Marker->IsVisibleMakerTag();
-		//}
+		if (const auto* Marker = Char->GetMinimapMarkerComponent())
+		{
+			return Marker->IsVisibleMakerTag();
+		}
 		return false;
 	});
 

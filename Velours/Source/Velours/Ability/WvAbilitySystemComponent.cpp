@@ -9,7 +9,7 @@
 // builtin
 #include "AbilitySystemGlobals.h"
 #include "Character/BasePawn.h"
-//#include "Character/WvPlayerController.h"
+#include "Character/WvPlayerController.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(WvAbilitySystemComponent)
 
@@ -22,7 +22,7 @@ UWvAbilitySystemComponent::UWvAbilitySystemComponent() : Super()
 int32 UWvAbilitySystemComponent::GetDefaultAbilityLevel() const
 {
 	int32 Level = 1;
-	if (ABasePawn* OwningCharacter = Cast<ABasePawn>(GetOwnerActor()))
+	if (ABasePawn* OwningCharacter = Cast<ABasePawn>(GetAvatarCharacter()))
 	{
 		//Level = OwningCharacter->GetParameterComponent() ? OwningCharacter->GetParameterComponent()->GetLevel() : Level;
 	}
@@ -49,7 +49,7 @@ void UWvAbilitySystemComponent::AbilityNotifyEnd(class UWvAnimNotifyState* Notif
 	});
 }
 
-ABasePawn* UWvAbilitySystemComponent::GetAvatarCharacter() const
+APawn* UWvAbilitySystemComponent::GetAvatarCharacter() const
 {
 	AActor* Avatar = GetAvatarActor();
 	if (Avatar)
@@ -67,25 +67,25 @@ const bool UWvAbilitySystemComponent::TryActivateAbilityByClassPressing(TSubclas
 	bool bIsPressing = true;
 	if (GetAvatarCharacter())
 	{
-		//if (AWvPlayerController* PC = Cast<AWvPlayerController>(GetAvatarCharacter()->GetController()))
-		//{
-		//	FGameplayTag TriggerTag;
-		//	for (FGameplayAbilitySpec& ActiveSpec : ActivatableAbilities.Items)
-		//	{
-		//		UWvAbilityDataAsset* AbilityData = CastChecked<UWvAbilityDataAsset>(ActiveSpec.SourceObject);
+		if (AWvPlayerController* PC = Cast<AWvPlayerController>(GetAvatarCharacter()->GetController()))
+		{
+			FGameplayTag TriggerTag;
+			for (FGameplayAbilitySpec& ActiveSpec : ActivatableAbilities.Items)
+			{
+				UWvAbilityDataAsset* AbilityData = CastChecked<UWvAbilityDataAsset>(ActiveSpec.SourceObject);
 
-		//		if (ActiveSpec.Handle == Spec->Handle)
-		//		{
-		//			TriggerTag = AbilityData->ActiveTriggerTag;
-		//			break;
-		//		}
-		//	}
+				if (ActiveSpec.Handle == Spec->Handle)
+				{
+					TriggerTag = AbilityData->ActiveTriggerTag;
+					break;
+				}
+			}
 
-		//	if (TriggerTag != FGameplayTag::EmptyTag)
-		//	{
-		//		bIsPressing = PC->GetInputEventComponent()->InputKeyDownControl(TriggerTag);
-		//	}
-		//}
+			if (TriggerTag != FGameplayTag::EmptyTag)
+			{
+				bIsPressing = PC->GetInputEventComponent()->InputKeyDownControl(TriggerTag);
+			}
+		}
 	}
 
 	Spec->InputPressed = bIsPressing;

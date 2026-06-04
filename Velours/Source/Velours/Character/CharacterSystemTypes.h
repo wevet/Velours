@@ -185,9 +185,10 @@ enum class EPickingObjectType : uint8
 UENUM(BlueprintType)
 enum class EQTEType : uint8
 {
-	None UMETA(DisplayName = "None"),
-	Climbing UMETA(DisplayName = "Climbing"),
-	Scenario UMETA(DisplayName = "Scenario"),
+	None,
+	Climbing,
+	Scenario,
+	Battle,
 };
 
 USTRUCT(BlueprintType)

@@ -9,6 +9,15 @@
 #include "Interface/WvAbilityTargetInterface.h"
 #include "CharacterSystemTypes.h"
 
+// project
+#include "Ability/WvAbilitySystemComponent.h"
+#include "Ability/WvAbilityType.h"
+//#include "BaseCharacterTypes.h"
+#include "Mission/MissionSystemTypes.h"
+//#include "Significance/SignificanceInterface.h"
+//#include "Component/WvCharacterMovementTypes.h"
+
+
 // builtin
 #include "AbilitySystemInterface.h"
 #include "Perception/AISightTargetInterface.h"
@@ -21,7 +30,6 @@
 class UMotionWarpingComponent;
 class UPawnNoiseEmitterComponent;
 
-class UCharacterMovementHelperComponent;
 class UInventoryComponent;
 class UCombatComponent;
 class UStatusComponent;
@@ -33,7 +41,11 @@ class UMinimapMarkerComponent;
 class UChooserTable;
 class UBehaviorTree;
 
-UCLASS()
+DECLARE_LOG_CATEGORY_EXTERN(LogBaseCharacter, All, All)
+
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnAbilitySystemAvailable, UWvAbilitySystemComponent*);
+
+UCLASS(Abstract)
 class VELOURS_API ABasePawn : public APawn, 
 	public IAbilitySystemInterface,
 	public IAISightTargetInterface,
@@ -47,8 +59,6 @@ public:
 	ABasePawn(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 	virtual void Tick(float DeltaTime) override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
-
-	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	virtual void OnConstruction(const FTransform& Transform) override;
 	virtual void PreInitializeComponents() override;
@@ -112,6 +122,8 @@ public:
 	virtual void DoStartCinematic() override;
 	virtual void DoStopCinematic() override;
 	virtual bool IsCinematic() const override;
+
+	virtual void DoKill(const bool bIsForceKill) override;
 #pragma endregion
 
 #pragma region IWvAIActionStateInterface
@@ -139,6 +151,30 @@ public:
 	//~End of APawn interface
 
 
+	FOnAbilitySystemAvailable OnAbilitySystemAvailable;
+
+	UPROPERTY(BlueprintAssignable)
+	FOnTeamHandleAttackDelegate OnTeamHandleAttackDelegate;
+
+	UPROPERTY(BlueprintAssignable)
+	FOnTeamWeaknessHandleAttackDelegate OnTeamWeaknessHandleAttackDelegate;
+
+	UPROPERTY(BlueprintAssignable)
+	FOnTeamHandleAttackDelegate OnTeamHandleReceiveDelegate;
+
+	UPROPERTY(BlueprintAssignable)
+	FOnTeamWeaknessHandleAttackDelegate OnTeamWeaknessHandleReceiveDelegate;
+
+	UPROPERTY(BlueprintAssignable)
+	FOnTeamHandleKillDelegate OnTeamHandleSendKillDelegate;
+
+	UPROPERTY(BlueprintAssignable)
+	FOnTeamHandleKillDelegate OnTeamHandleReceiveKillDelegate;
+
+public:
+	static FName MeshComponentName;
+	static FName CapsuleComponentName;
+
 public:
 	virtual class UWvSkeletalMeshComponent* GetWvSkeletalMeshComponent() const;
 
@@ -157,14 +193,29 @@ public:
 	UFUNCTION(BlueprintCallable, Category = Components)
 	class UWeaknessComponent* GetWeaknessComponent() const;
 
+	UFUNCTION(BlueprintCallable, Category = Components)
 	class UMinimapMarkerComponent* GetMinimapMarkerComponent() const;
+
+	float GetSkillToWidget() const;
+	float GetHealthToWidget() const;
+	bool IsBotCharacter() const;
+	bool IsLeader() const;
+
+	void BeginDrive();
+	void EndDrive();
+	bool IsVehicleDriving() const;
+
+	void SetAnimRootMotionTranslationScale(float InAnimRootMotionTranslationScale);
+	float GetAnimRootMotionTranslationScale() const;
+
+
+#pragma region Melee
+	virtual bool IsMeleePlaying() const;
+#pragma endregion
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UMotionWarpingComponent> MotionWarpingComponent;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<class UWvAbilitySystemComponent> WvAbilitySystemComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UInventoryComponent> ItemInventoryComponent;
@@ -185,11 +236,7 @@ protected:
 	TObjectPtr<class UMinimapMarkerComponent> MinimapMarkerComponent;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "BaseCharacter|Config")
-	FWvAbilitySystemAvatarData AbilitySystemData;
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "BaseCharacter|Config")
 	FGameplayTag CharacterTag;
-
 
 	UPROPERTY(Transient, ReplicatedUsing = OnRep_ReplicatedAcceleration)
 	FWvReplicatedAcceleration ReplicatedAcceleration;
@@ -197,6 +244,23 @@ protected:
 	UPROPERTY(ReplicatedUsing = OnRep_MyTeamID)
 	FGenericTeamId MyTeamID;
 
+	UPROPERTY(Transient)
+	TObjectPtr<class UWvAbilitySystemComponent> AbilitySystemComponent = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "BaseCharacter|Abilities")
+	FCustomWvAbilitySystemAvatarData AbilitySystemData;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "BaseCharacter|Abilities")
+	TSubclassOf<class UWvAbilitySystemComponent> AbilitySystemComponentClass;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "BaseCharacter|Abilities")
+	EAbilitySystemCreationPolicy AbilitySystemCreationPolicy = EAbilitySystemCreationPolicy::Lazy;
+
+	UPROPERTY(ReplicatedUsing = OnRep_AbilitySystemLoadState, VisibleInstanceOnly, BlueprintReadOnly, Category = "BaseCharacter|Abilities")
+	EAbilitySystemLoadState AbilitySystemLoadState = EAbilitySystemLoadState::Cold;
+
+	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "BaseCharacter|Abilities")
+	EAbilitySystemLoadReason LastAbilitySystemLoadReason = EAbilitySystemLoadReason::None;
 
 protected:
 	UFUNCTION()
@@ -205,4 +269,62 @@ protected:
 	UFUNCTION()
 	void OnRep_ReplicatedAcceleration();
 
+	UFUNCTION()
+	void OnRep_AbilitySystemLoadState(EAbilitySystemLoadState OldState);
+
+	UFUNCTION()
+	void OnAbilityFailed_Callback(const UGameplayAbility* Ability, const FGameplayTagContainer& GameplayTags);
+
+
+	void SetAbilitySystemLoadState(EAbilitySystemLoadState NewState, EAbilitySystemLoadReason Reason);
+
+public:
+	const FCustomWvAbilitySystemAvatarData& GetCustomWvAbilitySystemData();
+
+	UWvAbilitySystemComponent* RequestAbilitySystemWarmup(EAbilitySystemLoadReason Reason);
+	UWvAbilitySystemComponent* RequestAbilitySystemHot(EAbilitySystemLoadReason Reason);
+	EAbilitySystemLoadState GetAbilitySystemLoadState() const;
+	EAbilitySystemLoadReason GetLastAbilitySystemLoadReason() const;
+
+	void RequestAbilitySystemCooldown(EAbilitySystemLoadReason Reason);
+
+protected:
+	virtual void PostAbilitySystemInitialize() {};
+
+private:
+	UPROPERTY(Transient, ReplicatedUsing = OnRep_ReplicatedAbilitySystemComponent)
+	TObjectPtr<UWvAbilitySystemComponent> ReplicatedAbilitySystemComponent = nullptr;
+
+	struct FPendingAttributeReplication
+	{
+		FPendingAttributeReplication()
+		{
+		}
+
+		FPendingAttributeReplication(const FGameplayAttribute& InAttribute, const FGameplayAttributeData& InNewValue)
+		{
+			Attribute = InAttribute;
+			NewValue = InNewValue;
+		}
+
+		FGameplayAttribute Attribute;
+		FGameplayAttributeData NewValue;
+	};
+
+	UPROPERTY(Transient)
+	bool bAbilitySystemInitialized = false;
+
+	TArray<struct FPendingAttributeReplication> PendingAttributeReplications;
+	FDelegateHandle AbilityFailedDelegateHandle;
+
+	UWvAbilitySystemComponent* EnsureAbilitySystemComponentCreated();
+	void CreateAbilitySystemComponent();
+	void InitializeAbilitySystemComponent();
+
+	UFUNCTION()
+	void OnRep_ReplicatedAbilitySystemComponent();
+
+	/** Scale to apply to root motion translation on this Character */
+	UPROPERTY(Replicated)
+	float AnimRootMotionTranslationScale{1.0f};
 };

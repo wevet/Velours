@@ -6,6 +6,8 @@
 #include "Character/BasePawn.h"
 #include "VBaseHuman.generated.h"
 
+class UCapsuleComponent;
+
 /**
  * 
  */
@@ -18,6 +20,7 @@ class VELOURS_API AVBaseHuman : public ABasePawn
 public:
 	AVBaseHuman(const FObjectInitializer& ObjectInitializer);
 	virtual void Tick(float DeltaTime) override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	virtual void OnConstruction(const FTransform& Transform) override;
 
@@ -27,4 +30,9 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
+
+
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class UCapsuleComponent> CapsuleComponent;
 };

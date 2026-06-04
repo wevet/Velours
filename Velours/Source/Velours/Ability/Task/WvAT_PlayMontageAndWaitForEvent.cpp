@@ -29,12 +29,13 @@ void UWvAT_PlayMontageAndWaitForEvent::OnMontageBlendingOut(UAnimMontage* Montag
 		{
 			AbilitySystemComponent->ClearAnimatingAbility(Ability);
 
-			//// Reset AnimRootMotionTranslationScale
-			//ABaseCharacter* Character = Cast<ABaseCharacter>(GetAvatarActor());
-			//if (Character && (Character->GetLocalRole() == ROLE_Authority || (Character->GetLocalRole() == ROLE_AutonomousProxy && Ability->GetNetExecutionPolicy() == EGameplayAbilityNetExecutionPolicy::LocalPredicted)))
-			//{
-			//	Character->SetAnimRootMotionTranslationScale(1.f);
-			//}
+			// Reset AnimRootMotionTranslationScale	
+			ABasePawn* Character = Cast<ABasePawn>(GetAvatarActor());
+
+			if (Character && (Character->GetLocalRole() == ROLE_Authority || (Character->GetLocalRole() == ROLE_AutonomousProxy && Ability->GetNetExecutionPolicy() == EGameplayAbilityNetExecutionPolicy::LocalPredicted)))
+			{
+				Character->SetAnimRootMotionTranslationScale(1.f);
+			}
 
 		}
 	}
@@ -180,10 +181,10 @@ void UWvAT_PlayMontageAndWaitForEvent::Activate()
 
 				ABasePawn* Character = Cast<ABasePawn>(GetAvatarActor());
 
-				//if (Character && (Character->GetLocalRole() == ROLE_Authority || (Character->GetLocalRole() == ROLE_AutonomousProxy && Ability->GetNetExecutionPolicy() == EGameplayAbilityNetExecutionPolicy::LocalPredicted)))
-				//{
-				//	Character->SetAnimRootMotionTranslationScale(AnimRootMotionTranslationScale);
-				//}
+				if (Character && (Character->GetLocalRole() == ROLE_Authority || (Character->GetLocalRole() == ROLE_AutonomousProxy && Ability->GetNetExecutionPolicy() == EGameplayAbilityNetExecutionPolicy::LocalPredicted)))
+				{
+					Character->SetAnimRootMotionTranslationScale(AnimRootMotionTranslationScale);
+				}
 
 				bPlayedMontage = true;
 				ASC->AbilityMontageBeginDelegate.Broadcast(Ability, MontageToPlay);

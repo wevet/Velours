@@ -7,10 +7,11 @@
 #include "WvInputEventTypes.h"
 #include "WvAbilitySystemGlobals.h"
 #include "WvAbilitySystemComponentBase.h"
-//#include "Character/PlayerCharacter.h"
 #include "WvInputEventComponent.generated.h"
 
 class UWvAbilitySystemComponent;
+class AWvPlayerController;
+
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class VELOURS_API UWvInputEventComponent : public UActorComponent
@@ -95,11 +96,8 @@ protected:
 	float CacheInputDuration{0.f};
 
 private:
-	//UPROPERTY()
-	//TObjectPtr<class AWvPlayerController> PlayerController;
-
-	//UPROPERTY()
-	//TObjectPtr<class APlayerCharacter> PlayerCharacter;
+	UPROPERTY()
+	TObjectPtr<class AWvPlayerController> PlayerController;
 
 	UPROPERTY()
 	TObjectPtr<class UWvAbilitySystemComponent> ASC;

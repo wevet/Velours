@@ -1,0 +1,47 @@
+// Copyright 2022 wevet works All Rights Reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Blueprint/UserWidget.h"
+#include "Components/Image.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "PlayerHealth.generated.h"
+
+class ABasePawn;
+/**
+ * 
+ */
+UCLASS(meta = (DisableNativeTick))
+class VELOURS_API UPlayerHealth : public UUserWidget
+{
+	GENERATED_BODY()
+	
+public:
+	UPlayerHealth(const FObjectInitializer& ObjectInitializer);
+	virtual void NativeConstruct() override;
+
+protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "PlayerHealth|Variable")
+	FName SourceImageKeyName;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "PlayerHealth|Variable")
+	FName MaterialParamKeyName;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "PlayerHealth|Variable")
+	float InterpSpeed;
+	float CurrentHealth;
+
+	UPROPERTY()
+	class UImage* SourceImage;
+
+	UPROPERTY()
+	class UMaterialInstanceDynamic* MaterialInstance;
+
+	TWeakObjectPtr<ABasePawn> CharacterPtr;
+
+public:
+	void Initializer(ABasePawn* InCharacter);
+	void Renderer(const float DeltaTime);
+};
+

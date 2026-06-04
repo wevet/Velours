@@ -9,6 +9,8 @@
 #include "WvAbilitySystemBlueprintFunctionLibrary.h"
 #include "Game/CharacterInstanceSubsystem.h"
 #include "Velours.h"
+#include "Misc/WvCommonUtils.h"
+
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(StatusComponent)
 
@@ -24,43 +26,78 @@ void UStatusComponent::BeginPlay()
 	Super::SetComponentTickEnabled(false);
 
 	Character = Cast<ABasePawn>(GetOwner());
-	//ASC = Cast<UWvAbilitySystemComponent>(Character->GetAbilitySystemComponent());
+
+
+	if (Character.IsValid())
+	{
+		Character->OnTeamHandleAttackDelegate.AddUniqueDynamic(this, &ThisClass::OnSendAbilityAttack);
+		Character->OnTeamWeaknessHandleAttackDelegate.AddUniqueDynamic(this, &ThisClass::OnSendWeaknessAttack);
+		Character->OnTeamHandleReceiveDelegate.AddUniqueDynamic(this, &ThisClass::OnReceiveAbilityAttack);
+		Character->OnTeamWeaknessHandleReceiveDelegate.AddUniqueDynamic(this, &ThisClass::OnReceiveWeaknessAttack);
+		Character->OnTeamHandleReceiveKillDelegate.AddUniqueDynamic(this, &ThisClass::OnReceiveKillTarget);
+
+		Character->OnAbilitySystemAvailable.AddUObject(this, &UStatusComponent::HandleAbilitySystemAvailable);
+
+		TryBindExistingAbilitySystem();
+	}
+
+
+	if (IWvAbilitySystemAvatarInterface* Avatar = Cast<IWvAbilitySystemAvatarInterface>(GetOwner()))
+	{
+		CharacterInfo.Name = Avatar->GetAvatarName();
+	}
+}
+
+void UStatusComponent::HandleAbilitySystemAvailable(UWvAbilitySystemComponent* InASC)
+{
+	TryBindExistingAbilitySystem();
+}
+
+void UStatusComponent::TryBindExistingAbilitySystem()
+{
+	if (ASC.IsValid())
+	{
+		return;
+	}
+
+	if (!Character.IsValid())
+	{
+		Character = Cast<ABasePawn>(GetOwner());
+	}
+
+	if (!Character.IsValid())
+	{
+		return;
+	}
+
+	ASC = Character->GetWvAbilitySystemComponent();
+
+	if (!ASC.IsValid())
+	{
+		return;
+	}
+
+	AAS = ASC->GetStatusAttributeSet(UWvAbilityAttributeSet::StaticClass());
+
 	HPChangeDelegateHandle = ASC->GetGameplayAttributeValueChangeDelegate(UWvAbilityAttributeSet::GetHPAttribute()).AddUObject(this, &UStatusComponent::HealthChange_Callback);
 	DamageChangeDelegateHandle = ASC->GetGameplayAttributeValueChangeDelegate(UWvAbilityAttributeSet::GetDamageAttribute()).AddUObject(this, &UStatusComponent::DamageChange_Callback);
 	SkillChangeDelegateHandle = ASC->GetGameplayAttributeValueChangeDelegate(UWvAbilityAttributeSet::GetSkillAttribute()).AddUObject(this, &UStatusComponent::SkillChange_Callback);
 	VigilanceChangeDelegateHandle = ASC->GetGameplayAttributeValueChangeDelegate(UWvAbilityAttributeSet::GetVigilanceAttribute()).AddUObject(this, &UStatusComponent::Vigilance_Callback);
-
-
-	//if (Character.IsValid())
-	//{
-	//	Character->OnTeamHandleAttackDelegate.AddDynamic(this, &ThisClass::OnSendAbilityAttack);
-	//	Character->OnTeamWeaknessHandleAttackDelegate.AddDynamic(this, &ThisClass::OnSendWeaknessAttack);
-	//	Character->OnTeamHandleReceiveDelegate.AddDynamic(this, &ThisClass::OnReceiveAbilityAttack);
-	//	Character->OnTeamWeaknessHandleReceiveDelegate.AddDynamic(this, &ThisClass::OnReceiveWeaknessAttack);
-	//	Character->OnTeamHandleReceiveKillDelegate.AddDynamic(this, &ThisClass::OnReceiveKillTarget);
-	//}
-
-	if (ASC.IsValid())
-	{
-		AAS = ASC->GetStatusAttributeSet(UWvAbilityAttributeSet::StaticClass());
-	}
-
-	//if (IWvAbilitySystemAvatarInterface* Avatar = Cast<IWvAbilitySystemAvatarInterface>(GetOwner()))
-	//{
-	//	CharacterInfo.Name = Avatar->GetAvatarName();
-	//}
 }
 
 void UStatusComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	//if (Character.IsValid())
-	//{
-	//	Character->OnTeamHandleAttackDelegate.RemoveDynamic(this, &ThisClass::OnSendAbilityAttack);
-	//	Character->OnTeamWeaknessHandleAttackDelegate.RemoveDynamic(this, &ThisClass::OnSendWeaknessAttack);
-	//	Character->OnTeamHandleReceiveDelegate.RemoveDynamic(this, &ThisClass::OnReceiveAbilityAttack);
-	//	Character->OnTeamWeaknessHandleReceiveDelegate.RemoveDynamic(this, &ThisClass::OnReceiveWeaknessAttack);
-	//	Character->OnTeamHandleReceiveKillDelegate.RemoveDynamic(this, &ThisClass::OnReceiveKillTarget);
-	//}
+
+	if (Character.IsValid())
+	{
+		Character->OnAbilitySystemAvailable.RemoveAll(this);
+
+		Character->OnTeamHandleAttackDelegate.RemoveDynamic(this, &ThisClass::OnSendAbilityAttack);
+		Character->OnTeamWeaknessHandleAttackDelegate.RemoveDynamic(this, &ThisClass::OnSendWeaknessAttack);
+		Character->OnTeamHandleReceiveDelegate.RemoveDynamic(this, &ThisClass::OnReceiveAbilityAttack);
+		Character->OnTeamWeaknessHandleReceiveDelegate.RemoveDynamic(this, &ThisClass::OnReceiveWeaknessAttack);
+		Character->OnTeamHandleReceiveKillDelegate.RemoveDynamic(this, &ThisClass::OnReceiveKillTarget);
+	}
 
 	if (ASC.IsValid())
 	{
@@ -103,12 +140,13 @@ void UStatusComponent::SkillChange_Callback(const FOnAttributeChangeData& Data)
 		return;
 	}
 
-	//if (!Character->IsBotCharacter())
-	//{
-	//	auto Skill = AAS->GetSkill();
-	//	auto MaxSkill = AAS->GetSkillMax();
-	//	UE_LOG(LogTemp, Log, TEXT("Skill => %.3f, MaxSkill => %.3f, Owner => %s, function => %s"), Skill, MaxSkill, *GetNameSafe(GetOwner()), *FString(__FUNCTION__));
-	//}
+	if (UWvCommonUtils::IsBotPawn(Character.Get()))
+	{
+		auto Skill = AAS->GetSkill();
+		auto MaxSkill = AAS->GetSkillMax();
+		UE_LOG(LogTemp, Log, TEXT("Skill => %.3f, MaxSkill => %.3f, Owner => %s, function => %s"), Skill, MaxSkill, *GetNameSafe(GetOwner()), *FString(__FUNCTION__));
+	}
+
 
 	if (IsMaxSkll())
 	{
@@ -142,8 +180,8 @@ const bool UStatusComponent::SetFullSkill()
 		return false;
 	}
 
-	//UWvAbilitySystemBlueprintFunctionLibrary::FullSkill(Character.Get());
-	//AAS->SetSkill(AAS->GetSkillMax());
+	UWvAbilitySystemBlueprintFunctionLibrary::FullSkill(Character.Get());
+	AAS->SetSkill(AAS->GetSkillMax());
 	return true;
 }
 
@@ -228,8 +266,8 @@ void UStatusComponent::DoAlive()
 	if (AAS.IsValid())
 	{
 		const float HPMax = AAS->GetHPMax();
-		//AAS->SetHP(AAS->GetHPMax());
-		//UWvAbilitySystemBlueprintFunctionLibrary::RecoverHP(Character.Get(), HPMax);
+		AAS->SetHP(AAS->GetHPMax());
+		UWvAbilitySystemBlueprintFunctionLibrary::RecoverHP(Character.Get(), HPMax);
 	}
 }
 
@@ -241,7 +279,7 @@ void UStatusComponent::DoKill()
 	}
 
 	//const float HPCurrent = AAS->GetHP();
-	//UWvAbilitySystemBlueprintFunctionLibrary::KillMySelf(Character.Get());
+	UWvAbilitySystemBlueprintFunctionLibrary::KillMySelf(Character.Get());
 }
 
 /// <summary>
@@ -281,7 +319,7 @@ EBodyShapeType UStatusComponent::GetBodyShapeType() const
 	return CharacterInfo.BodyShapeType;
 }
 
-FCharacterInfo UStatusComponent::GetCharacterInfo() const
+const FCharacterInfo& UStatusComponent::GetCharacterInfo()
 {
 	return CharacterInfo;
 }
@@ -314,13 +352,10 @@ void UStatusComponent::OnReceiveWeaknessAttack(AActor* Actor, const FName& Weakn
 
 void UStatusComponent::OnReceiveKillTarget(AActor* Actor, const float Damage)
 {
-	//if (Character.IsValid())
-	//{
-	//	if (Character->IsBotCharacter())
-	//	{
-	//		UCharacterInstanceSubsystem::Get()->RemoveAICharacter(Character.Get());
-	//	}
-	//}
+	if (UWvCommonUtils::IsBotPawn(Character.Get()))
+	{
+		UCharacterInstanceSubsystem::Get()->RemoveAICharacter(Character.Get());
+	}
 }
 
 

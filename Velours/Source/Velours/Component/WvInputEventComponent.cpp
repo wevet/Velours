@@ -1,10 +1,13 @@
 // Copyright 2022 wevet works All Rights Reserved.
 
 #include "Component/WvInputEventComponent.h"
-//#include "Character/WvPlayerController.h"
+//#include "Character/PlayerCharacter.h"
+#include "Character/WvPlayerController.h"
+#include "Ability/WvAbilitySystemComponent.h"
+
 #include "GameFramework/InputSettings.h"
 #include "Velours.h"
-#include "Ability/WvAbilitySystemComponent.h"
+
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(WvInputEventComponent)
 
@@ -20,7 +23,7 @@ void UWvInputEventComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	bPermanentCacheInput = false;
-	//PlayerController = Cast<AWvPlayerController>(GetOuter());
+	PlayerController = Cast<AWvPlayerController>(GetOuter());
 }
 
 void UWvInputEventComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -51,14 +54,8 @@ void UWvInputEventComponent::PostASCInitialize(UAbilitySystemComponent* NewASC)
 		ASC = nullptr;
 	}
 
+
 	ASC = Cast<UWvAbilitySystemComponent>(NewASC);
-
-	if (RestrictInputEventTags.IsEmpty())
-	{
-		//RestrictInputEventTags = ABILITY_GLOBAL()->RestrictInputEventTags;
-	}
-
-	//PlayerCharacter = Cast<APlayerCharacter>(ASC->GetAvatarActor());
 }
 
 void UWvInputEventComponent::BuildKeyEventMap()
@@ -322,7 +319,7 @@ void UWvInputEventComponent::TriggerCacheInputEvent(UGameplayAbility* CallFromAb
 
 	const bool bHasStillPressing = InputKeyDownControl(CacheInput);
 	ASC->PressTriggerInputEvent(CacheInput, true, bHasStillPressing);
-	//PlayerController->OnInputEventGameplayTagTrigger_Game.Broadcast(CacheInput, true);
+	PlayerController->OnInputEventGameplayTagTrigger_Game.Broadcast(CacheInput, true);
 	const UGameplayAbility* AnimatingAbility = ASC->GetAnimatingAbility();
 
 	if (AnimatingAbility != CallFromAbility)
@@ -350,16 +347,15 @@ void UWvInputEventComponent::InputCallBack(const FKey InputKey, const FName Key,
 	//Time filtering is required here to comprehensively consider key combination, current input mode and other issues
 	//After that, proceed to message broadcast. Cuttently, above issues are not considered here and message will be broadcasted directly
 
-	//if (!IsValid(PlayerController))
-	//{
-	//	return;
-	//}
+	if (!IsValid(PlayerController))
+	{
+		return;
+	}
 
-	//if (PlayerCharacter->IsInputKeyDisable())
-	//{
-	//	return;
-	//}
-
+	if (PlayerController->IsPawnInputKeyDisable())
+	{
+		return;
+	}
 
 	FWvInputEvent* InputEvent = FindInputEvent(Key);
 	if (!InputEvent)
@@ -461,13 +457,13 @@ void UWvInputEventComponent::InputKey(const FInputKeyEventArgs& Params)
 
 void UWvInputEventComponent::PluralInputCallBack(const FKey InputKey, const FName Key, const bool bPress)
 {
-	//if (IsValid(PlayerCharacter))
-	//{
-	//	if (PlayerCharacter->IsInputKeyDisable())
-	//	{
-	//		return;
-	//	}
-	//}
+	if (IsValid(PlayerController))
+	{
+		if (PlayerController->IsPawnInputKeyDisable())
+		{
+			return;
+		}
+	}
 
 	if (!InputKey.IsValid())
 	{
@@ -645,9 +641,8 @@ void UWvInputEventComponent::PluralInputCallBackExecute(FGameplayTag EventTag, b
 		return;
 	}
 
-	//ASC->PluralInputTriggerInputEvent(EventTag);
 	ASC->TryActivateAbilityByTag(EventTag);
-	//PlayerController->OnPluralInputEventTrigger.Broadcast(EventTag, bPress);
+	PlayerController->OnPluralInputEventTrigger.Broadcast(EventTag, bPress);
 }
 
 void UWvInputEventComponent::OnHoldingInputCallBackExecute(FGameplayTag EventTag, bool bPress)
@@ -657,9 +652,8 @@ void UWvInputEventComponent::OnHoldingInputCallBackExecute(FGameplayTag EventTag
 		return;
 	}
 
-	//ASC->PluralInputTriggerInputEvent(EventTag);
 	ASC->TryActivateAbilityByTag(EventTag);
-	//PlayerController->OnHoldingInputEventTrigger.Broadcast(EventTag, bPress);
+	PlayerController->OnHoldingInputEventTrigger.Broadcast(EventTag, bPress);
 }
 
 void UWvInputEventComponent::OnDoubleClickCallBackExecute(FGameplayTag EventTag, bool bPress)
@@ -670,7 +664,7 @@ void UWvInputEventComponent::OnDoubleClickCallBackExecute(FGameplayTag EventTag,
 	}
 
 	ASC->TryActivateAbilityByTag(EventTag);
-	//PlayerController->OnDoubleClickInputEventTrigger.Broadcast(EventTag, bPress);
+	PlayerController->OnDoubleClickInputEventTrigger.Broadcast(EventTag, bPress);
 }
 
 void UWvInputEventComponent::UpdateCachePluralInput()
@@ -799,23 +793,23 @@ void UWvInputEventComponent::ProcessGameEvent(const FGameplayTag& Tag, const boo
 	}
 
 	// Broadcast the tag status of input event, which button is currently pressed on HUD, need to listen to this message
-	//PlayerController->OnInputEventGameplayTagTrigger_Game.Broadcast(Tag, bPress);
+	PlayerController->OnInputEventGameplayTagTrigger_Game.Broadcast(Tag, bPress);
 }
 
 void UWvInputEventComponent::ProcessGameEventUI(const FGameplayTag& Tag, const bool bPress)
 {
-	//if (IsValid(PlayerController))
-	//{
-	//	PlayerController->OnInputEventGameplayTagTrigger_UI.Broadcast(Tag, bPress);
-	//}
+	if (IsValid(PlayerController))
+	{
+		PlayerController->OnInputEventGameplayTagTrigger_UI.Broadcast(Tag, bPress);
+	}
 }
 
 void UWvInputEventComponent::ProcessGameEventExtend(const FString EventName, const bool bPress)
 {
-	//if (IsValid(PlayerController))
-	//{
-	//	PlayerController->InputEventGameplayTagExtendDelegate_All.Broadcast(EventName, bPress);
-	//}
+	if (IsValid(PlayerController))
+	{
+		PlayerController->InputEventGameplayTagExtendDelegate_All.Broadcast(EventName, bPress);
+	}
 }
 
 void UWvInputEventComponent::ResetWaitTillEnd(UGameplayAbility* WaitEndAbility)
@@ -897,10 +891,10 @@ void UWvInputEventComponent::ResetCacheInput_ClearTimer()
 
 bool UWvInputEventComponent::InputKeyDownControl(const FGameplayTag Tag) const
 {
-	//if (!PlayerController)
-	//{
-	//	return false;
-	//}
+	if (!PlayerController)
+	{
+		return false;
+	}
 
 	bool bIsFoundKey = false;
 
@@ -908,10 +902,10 @@ bool UWvInputEventComponent::InputKeyDownControl(const FGameplayTag Tag) const
 	{
 		for (const FKey& Key : *Keys)
 		{
-			//if (PlayerController->IsInputKeyDown(Key))
-			//{
-			//	return true;
-			//}
+			if (PlayerController->IsInputKeyDown(Key))
+			{
+				return true;
+			}
 		}
 	}
 

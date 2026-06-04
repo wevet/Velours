@@ -30,8 +30,12 @@ class VELOURS_API UWvAbilitySystemComponent : public UWvAbilitySystemComponentBa
 public:
 	UWvAbilitySystemComponent();
 	virtual void OnTagUpdated(const FGameplayTag& Tag, bool TagExists) override;
+	virtual class APawn* GetAvatarCharacter() const override;
+	virtual int32 GetDefaultAbilityLevel() const override;
 
 public:
+
+
 	UPROPERTY(BlueprintAssignable, BlueprintReadWrite, EditAnywhere)
 	FAbilityMontageBeginDelegate AbilityMontageBeginDelegate;
 
@@ -45,9 +49,6 @@ public:
 
 	void AbilityNotifyBegin(class UWvAnimNotifyState* Notify, class UWvGameplayAbility* DebugAbility = nullptr);
 	void AbilityNotifyEnd(class UWvAnimNotifyState* Notify);
-	int32 GetDefaultAbilityLevel() const;
-	class ABasePawn* GetAvatarCharacter() const;
-
 
 	const bool TryActivateAbilityByClassPressing(TSubclassOf<UGameplayAbility> InAbilityToActivate, bool bAllowRemoteActivation);
 
