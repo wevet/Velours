@@ -44,7 +44,7 @@ void UStatusComponent::BeginPlay()
 
 	if (IWvAbilitySystemAvatarInterface* Avatar = Cast<IWvAbilitySystemAvatarInterface>(GetOwner()))
 	{
-		CharacterInfo.Name = Avatar->GetAvatarName();
+		CharacterInfo.Name = Avatar->GetAvatarTag().GetTagName();
 	}
 }
 

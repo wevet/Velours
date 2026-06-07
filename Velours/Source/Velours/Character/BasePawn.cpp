@@ -8,15 +8,15 @@
 #include "Component/CombatComponent.h"
 #include "Component/StatusComponent.h"
 #include "Component/WeaknessComponent.h"
+#include "Component/LocomotionComponent.h"
+#include "Component/WvFactionComponent.h"
 
 #include "Mission/MinimapMarkerComponent.h"
-
 #include "Game/WvGameInstance.h"
 #include "Item/BulletHoldWeaponActor.h"
 #include "GameExtension.h"
 #include "Game/CharacterInstanceSubsystem.h"
 #include "Level/FieldInstanceSubsystem.h"
-
 #include "Ability/WvInheritanceAttributeSet.h"
 #include "WvAbilitySystemBlueprintFunctionLibrary.h"
 #include "Velours.h"
@@ -108,9 +108,16 @@ ABasePawn::ABasePawn(const FObjectInitializer& ObjectInitializer) : Super(Object
 	PawnNoiseEmitterComponent = ObjectInitializer.CreateDefaultSubobject<UPawnNoiseEmitterComponent>(this, TEXT("PawnNoiseEmitterComponent"));
 	PawnNoiseEmitterComponent->bAutoActivate = 1;
 
+	WvFactionComponent = ObjectInitializer.CreateDefaultSubobject<UWvFactionComponent>(this, TEXT("WvFactionComponent"));
+	WvFactionComponent->bAutoActivate = 1;
+
+	// minimap
 	MinimapMarkerComponent = ObjectInitializer.CreateDefaultSubobject<UMinimapMarkerComponent>(this, TEXT("MinimapMarkerComponent"));
 	MinimapMarkerComponent->bAutoActivate = 1;
 
+	// locomotion
+	LocomotionComponent = ObjectInitializer.CreateDefaultSubobject<ULocomotionComponent>(this, TEXT("LocomotionComponent"));
+	LocomotionComponent->bAutoActivate = 1;
 
 	MyTeamID = FGenericTeamId(0);
 	CharacterTag = FGameplayTag::RequestGameplayTag(TAG_Character_Default.GetTag().GetTagName());
@@ -221,6 +228,8 @@ void ABasePawn::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEve
 #endif
 
 
+
+#pragma region IWvAbilitySystemAvatarInterface
 const FWvAbilitySystemAvatarData& ABasePawn::GetAbilitySystemData()
 {
 	return AbilitySystemData;
@@ -281,24 +290,38 @@ UWvHitReactDataAsset* ABasePawn::GetHitReactDataAsset() const
 	return nullptr;
 }
 
-FName ABasePawn::GetAvatarName() const
-{
-	return FName();
-}
-
-FGenericTeamId ABasePawn::GetGenericTeamId() const
-{
-	return FGenericTeamId();
-}
-
-void ABasePawn::SetGenericTeamId(const FGenericTeamId& NewTeamID)
-{
-}
-
 FGameplayTag ABasePawn::GetAvatarTag() const
 {
 	return CharacterTag;
 }
+#pragma endregion
+
+FGenericTeamId ABasePawn::GetGenericTeamId() const
+{
+	return MyTeamID;
+}
+
+void ABasePawn::SetGenericTeamId(const FGenericTeamId& NewTeamID)
+{
+	if (!GetController())
+	{
+		if (HasAuthority())
+		{
+			const FGenericTeamId OldTeamID = MyTeamID;
+			MyTeamID = NewTeamID;
+			ConditionalBroadcastTeamChanged(this, OldTeamID, MyTeamID);
+		}
+		else
+		{
+			UE_LOG(LogBaseCharacter, Error, TEXT("You can't set the team ID on a character (%s) except on the authority"), *GetNameSafe(this));
+		}
+	}
+	else
+	{
+		UE_LOG(LogBaseCharacter, Error, TEXT("You can't set the team ID on a possessed character (%s); it's driven by the associated controller"), *GetNameSafe(this));
+	}
+}
+
 
 USceneComponent* ABasePawn::GetOverlapBaseComponent()
 {
@@ -307,7 +330,7 @@ USceneComponent* ABasePawn::GetOverlapBaseComponent()
 
 FOnTeamIndexChangedDelegate* ABasePawn::GetOnTeamIndexChangedDelegate()
 {
-	return nullptr;
+	return &OnTeamChangedDelegate;
 }
 
 bool ABasePawn::IsDead() const
@@ -418,6 +441,15 @@ void ABasePawn::DoStopAttack()
 	ASC->AddGameplayTag(TAG_Character_ActionMelee_Forbid, 1);
 }
 
+bool ABasePawn::IsMeleeAttacking() const
+{
+	if (GetWvAbilitySystemComponent())
+	{
+		return AbilitySystemComponent->HasMatchingGameplayTag(TAG_Character_StateMelee);
+	}
+	return false;
+}
+
 void ABasePawn::DoBulletAttack()
 {
 }
@@ -426,6 +458,13 @@ void ABasePawn::DoThrowAttack()
 {
 }
 
+void ABasePawn::DoKill(const bool bIsForceKill)
+{
+
+}
+
+
+#pragma region IWvCinematicTargetInterface
 void ABasePawn::DoStartCinematic()
 {
 }
@@ -438,21 +477,10 @@ bool ABasePawn::IsCinematic() const
 {
 	return false;
 }
+#pragma endregion
 
-void ABasePawn::DoKill(const bool bIsForceKill)
-{
 
-}
-
-bool ABasePawn::IsLeader() const
-{
-	if (AbilitySystemComponent)
-	{
-		return AbilitySystemComponent->HasMatchingGameplayTag(TAG_Character_AI_Leader);
-	}
-	return false;
-}
-
+#pragma region IWvAIActionStateInterface
 void ABasePawn::SetAIActionState(const EAIActionState NewAIActionState)
 {
 }
@@ -461,14 +489,76 @@ EAIActionState ABasePawn::GetAIActionState() const
 {
 	return EAIActionState();
 }
+#pragma endregion
 
 
+#pragma region IAISightTargetInterface
 // AI Perception
 // https://blog.gamedev.tv/ai-sight-perception-to-custom-points/
 bool ABasePawn::CanBeSeenFrom(const FVector& ObserverLocation, FVector& OutSeenLocation, int32& NumberOfLoSChecksPerformed, float& OutSightStrength, const AActor* IgnoreActor, const bool* bWasVisible, int32* UserData) const
 {
+	if (!IsValid(GetWvSkeletalMeshComponent()))
+	{
+		return false;
+	}
+
+	static const FName NAME_AILineOfSight = FName(TEXT("TestPawnLineOfSight"));
+
+	const auto SK = GetWvSkeletalMeshComponent();
+
+	FHitResult HitResult;
+	const TArray<USkeletalMeshSocket*> Sockets = SK->GetSkeletalMeshAsset()->GetActiveSocketList();
+
+	FCollisionObjectQueryParams ObjectQueryParams(ECC_TO_BITFIELD(ECC_WorldStatic) | ECC_TO_BITFIELD(ECC_WorldDynamic) | ECC_TO_BITFIELD(ECC_Pawn));
+	FCollisionQueryParams QueryParams(NAME_AILineOfSight, true, IgnoreActor);
+
+	for (int32 Index = 0; Index < Sockets.Num(); ++Index)
+	{
+		const FName& SocketName = Sockets[Index]->SocketName;
+		if (SocketName.IsNone())
+		{
+			continue;
+		}
+
+		const FVector SocketLocation = SK->GetSocketLocation(SocketName);
+		const bool bHitSocket = GetWorld()->LineTraceSingleByObjectType(
+			HitResult, 
+			ObserverLocation, 
+			SocketLocation,
+			ObjectQueryParams,
+			QueryParams);
+
+		NumberOfLoSChecksPerformed++;
+
+		if (bHitSocket || (HitResult.GetActor() && HitResult.GetActor()->IsOwnedBy(this)))
+		{
+			OutSeenLocation = SocketLocation;
+			OutSightStrength = 1;
+			return true;
+		}
+	}
+
+	HitResult.Reset();
+	const bool bHit = GetWorld()->LineTraceSingleByObjectType(
+		HitResult, 
+		ObserverLocation, 
+		GetActorLocation(),
+		ObjectQueryParams,
+		QueryParams);
+
+	NumberOfLoSChecksPerformed++;
+
+	if (bHit || (HitResult.GetActor() && HitResult.GetActor()->IsOwnedBy(this)))
+	{
+		OutSeenLocation = GetActorLocation();
+		OutSightStrength = 1;
+		return true;
+	}
+
+	OutSightStrength = 0;
 	return false;
 }
+#pragma endregion
 
 
 void ABasePawn::NotifyControllerChanged()
@@ -478,13 +568,22 @@ void ABasePawn::NotifyControllerChanged()
 	Super::NotifyControllerChanged();
 
 	// Update our team ID based on the controller
-	if (HasAuthority() && (Controller != nullptr))
+	if (HasAuthority() && Controller != nullptr)
 	{
 		if (IWvAbilityTargetInterface* ControllerWithTeam = Cast<IWvAbilityTargetInterface>(Controller))
 		{
 			MyTeamID = ControllerWithTeam->GetGenericTeamId();
 			ConditionalBroadcastTeamChanged(this, OldTeamId, MyTeamID);
 		}
+
+		if (WvFactionComponent)
+		{
+			WvFactionComponent->SetFactionOwnerActor(Controller);
+		}
+	}
+	else if (HasAuthority() && WvFactionComponent)
+	{
+		WvFactionComponent->SetFactionOwnerActor(nullptr);
 	}
 }
 
@@ -518,6 +617,15 @@ UMinimapMarkerComponent* ABasePawn::GetMinimapMarkerComponent() const
 	return MinimapMarkerComponent;
 }
 
+ULocomotionComponent* ABasePawn::GetLocomotionComponent() const
+{
+	return LocomotionComponent;
+}
+
+UWvFactionComponent* ABasePawn::GetFactionComponent() const
+{
+	return WvFactionComponent;
+}
 
 void ABasePawn::OnRep_MyTeamID(FGenericTeamId OldTeamID)
 {
@@ -542,6 +650,15 @@ float ABasePawn::GetSkillToWidget() const
 float ABasePawn::GetHealthToWidget() const
 {
 	return StatusComponent->GetHealthToWidget();
+}
+
+bool ABasePawn::IsLeader() const
+{
+	if (AbilitySystemComponent)
+	{
+		return AbilitySystemComponent->HasMatchingGameplayTag(TAG_Character_AI_Leader);
+	}
+	return false;
 }
 
 bool ABasePawn::IsBotCharacter() const
@@ -585,18 +702,6 @@ float ABasePawn::GetAnimRootMotionTranslationScale() const
 	return AnimRootMotionTranslationScale;
 }
 
-#pragma region Melee
-bool ABasePawn::IsMeleePlaying() const
-{
-	if (GetWvAbilitySystemComponent())
-	{
-		return AbilitySystemComponent->HasMatchingGameplayTag(TAG_Character_StateMelee);
-	}
-	return false;
-}
-
-
-#pragma endregion
 
 
 #pragma region Abilities
@@ -650,7 +755,6 @@ UWvAbilitySystemComponent* ABasePawn::RequestAbilitySystemHot(EAbilitySystemLoad
 
 	return ASC;
 }
-
 
 UWvAbilitySystemComponent* ABasePawn::EnsureAbilitySystemComponentCreated()
 {
@@ -765,7 +869,6 @@ void ABasePawn::OnRep_ReplicatedAbilitySystemComponent()
 	}
 }
 
-
 void ABasePawn::SetAbilitySystemLoadState(EAbilitySystemLoadState NewState, EAbilitySystemLoadReason Reason)
 {
 	if (!HasAuthority())
@@ -840,4 +943,6 @@ EAbilitySystemLoadReason ABasePawn::GetLastAbilitySystemLoadReason() const
 	return LastAbilitySystemLoadReason; 
 }
 #pragma endregion
+
+
 

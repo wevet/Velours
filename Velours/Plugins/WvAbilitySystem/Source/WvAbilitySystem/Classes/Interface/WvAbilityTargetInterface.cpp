@@ -45,11 +45,6 @@ USceneComponent* IWvAbilityTargetInterface::GetOverlapBaseComponent()
 	return nullptr;
 }
 
-FGameplayTag IWvAbilityTargetInterface::GetAvatarTag() const
-{
-	return FGameplayTag::EmptyTag;
-}
-
 void IWvAbilityTargetInterface::OnSendWeaknessAttack(AActor* Actor, const FName& WeaknessName, const float Damage)
 {
 }
@@ -108,22 +103,25 @@ bool IWvAbilityTargetInterface::IsFreezing() const
 	return false;
 }
 
-bool IWvAbilityTargetInterface::IsCinematic() const
-{
-	return false;
-}
-
 const bool IWvAbilityTargetInterface::CanAttack()
 {
 	return true;
 }
 
+
 UWvAIActionStateInterface::UWvAIActionStateInterface(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 }
 
-
 UWvEnvironmentInterface::UWvEnvironmentInterface(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
+{
+}
+
+UWvKeyableTargetInterface::UWvKeyableTargetInterface(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
+{
+}
+
+UWvCinematicTargetInterface::UWvCinematicTargetInterface(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 }
 

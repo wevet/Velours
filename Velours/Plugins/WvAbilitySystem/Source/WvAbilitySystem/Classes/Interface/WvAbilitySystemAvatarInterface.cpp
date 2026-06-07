@@ -88,3 +88,8 @@ UWvHitReactDataAsset* IWvAbilitySystemAvatarInterface::GetHitReactDataAsset() co
 	return nullptr; 
 }
 
+FGameplayTag IWvAbilitySystemAvatarInterface::GetAvatarTag() const
+{
+	return FGameplayTag::EmptyTag;
+}
+

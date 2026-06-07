@@ -818,3 +818,13 @@ bool UWvAbilitySystemComponentBase::IsAnimatingCombo() const
 	return false;
 }
 
+class APawn* UWvAbilitySystemComponentBase::GetAvatarCharacter() const
+{
+	return nullptr;
+}
+
+int32 UWvAbilitySystemComponentBase::GetDefaultAbilityLevel() const
+{
+	return INDEX_NONE;
+}
+

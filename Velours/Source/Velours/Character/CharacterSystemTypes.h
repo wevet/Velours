@@ -11,13 +11,6 @@ class UTexture2D;
 enum class EBodyShapeType : uint8;
 
 
-UENUM(BlueprintType)
-enum class EWvDirectionType : uint8
-{
-	Center   UMETA(DisplayName = "Center"),
-	Left UMETA(DisplayName = "Left"),
-	Right UMETA(DisplayName = "Right"),
-};
 
 UENUM(BlueprintType)
 enum class ELSGait : uint8
@@ -25,7 +18,6 @@ enum class ELSGait : uint8
 	Walking   UMETA(DisplayName = "Walking"),
 	Running   UMETA(DisplayName = "Running"),
 	Sprinting UMETA(DisplayName = "Sprinting"),
-	Max UMETA(Hidden),
 };
 
 UENUM(BlueprintType)
@@ -46,16 +38,23 @@ enum class ELSMovementMode : uint8
 UENUM(BlueprintType)
 enum class ELSRotationMode : uint8
 {
-	VelocityDirection UMETA(DisplayName = "VelocityDirection"),
-	LookingDirection  UMETA(DisplayName = "LookingDirection"),
+	VelocityDirection,
+	LookingDirection,
 };
 
 UENUM(BlueprintType)
 enum class ELSStance : uint8
 {
-	Standing UMETA(DisplayName = "Standing"),
-	Crouching  UMETA(DisplayName = "Crouching"),
+	Standing,
+	Crouching,
 };
+
+UENUM(BlueprintType)
+enum class ELSMovementDirection : uint8
+{
+	F, B, LL, LR, RL, RR,
+};
+
 
 UENUM(BlueprintType)
 enum class ELSCardinalDirection : uint8
@@ -331,88 +330,18 @@ struct VELOURS_API FLocomotionEssencialVariables
 
 public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	FVector MovementInput{ FVector::ZeroVector };
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	FVector RagdollLocation{ FVector::ZeroVector };
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	FVector Velocity{ FVector::ZeroVector };
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	FRotator CharacterRotation{FRotator::ZeroRotator};
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	FRotator LookingRotation{ FRotator::ZeroRotator };
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	FRotator LastVelocityRotation{ FRotator::ZeroRotator };
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	FRotator LastMovementInputRotation{ FRotator::ZeroRotator };
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	bool bWasMoving{ false };
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	bool bWasMovementInput{false};
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	bool bRagdollOnGround{ false };
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	bool bAiming{ false };
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion|AimOffset")
-	bool bLookAtAimOffset{ false };
-
-	TWeakObjectPtr<AActor> LookAtTarget{ nullptr };
-
-	TWeakObjectPtr<USceneComponent> LookAtTargetComponent{ nullptr };
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion|AimOffset")
-	float AimYawDelta{0.f};
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion|AimOffset")
-	float AimYawRate{ 0.f };
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	float RotationRateMultiplier{ 0.f };
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	float RotationOffset{ 0.f };
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	float VelocityDifference{ 0.f };
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	bool bIsBackwardInputEnable{false};
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	float RotationDifference{ 0.f };
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	float Direction{ 0.f };
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	FVector RagdollVelocity{ FVector::ZeroVector };
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	FRotator RagdollRotation{ FRotator::ZeroRotator };
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	FRotator JumpRotation{ FRotator::ZeroRotator };
-
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Locomotion")
 	ELSMovementMode LSMovementMode = ELSMovementMode::Grounded;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Locomotion")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
+	ELSMovementDirection LSMovementDirection = ELSMovementDirection::F;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
 	ELSGait LSGait = ELSGait::Running;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Locomotion")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
 	ELSStance LSStance = ELSStance::Standing;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Locomotion")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
 	ELSRotationMode LSRotationMode = ELSRotationMode::VelocityDirection;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
@@ -421,32 +350,10 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
 	ELSOverlayState OverlayState = ELSOverlayState::None;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	FVector WorldAcceleration2D{ FVector::ZeroVector };
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	FVector LocalAcceleration2D{ FVector::ZeroVector };
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	FVector LocalVelocity2D{ FVector::ZeroVector };
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	bool HasAcceleration{ false };
-
-
-	ELSMovementMode LSPrevMovementMode = ELSMovementMode::Grounded;
-
 public:
 	FLocomotionEssencialVariables()
 	{}
 
-	FORCEINLINE void Init(const FRotator& Rotation)
-	{
-		LastVelocityRotation = Rotation;
-		LookingRotation = Rotation;
-		LastMovementInputRotation = Rotation;
-		CharacterRotation = Rotation;
-	}
 };
 
 USTRUCT(BlueprintType)
@@ -1101,23 +1008,6 @@ struct FWvReplicatedAcceleration
 	UPROPERTY()
 	int8 AccelZ = 0;
 	// Raw Z accel rate component, quantized to represent [-MaxAcceleration, MaxAcceleration]
-};
-
-
-USTRUCT(BlueprintType)
-struct VELOURS_API FAccessoryData
-{
-	GENERATED_BODY()
-
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	EAccessoryType AccessoryType{ EAccessoryType::None};
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FName SocketName{NAME_None};
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	EWvDirectionType DirectionType{EWvDirectionType::Center};
 };
 
 

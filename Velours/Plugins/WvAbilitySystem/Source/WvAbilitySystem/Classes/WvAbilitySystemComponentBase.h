@@ -10,6 +10,7 @@
 
 class AController;
 class UWvAbilityAttributeSet;
+class APawn;
 
 
 UCLASS(abstract)
@@ -72,6 +73,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void TryActivateAbilityByInputEvent(AActor* Actor, const FGameplayTag EventTag);
 	void TryActivateAbilityByTag(const FGameplayTag Tag);
+
+	virtual class APawn* GetAvatarCharacter() const;
+	virtual int32 GetDefaultAbilityLevel() const;
+
 
 	UFUNCTION(BlueprintCallable, Category = "Ability")
 	class AController* GetAvatarController() const;

@@ -27,8 +27,8 @@ public:
 
 	virtual UBehaviorTree* GetBehaviorTree() const;
 	virtual UWvHitReactDataAsset* GetHitReactDataAsset() const;
+	virtual FGameplayTag GetAvatarTag() const;
 
-	virtual FName GetAvatarName() const = 0;
 
 	UFUNCTION(BlueprintImplementableEvent)
 	void ReceiveOnInitAttribute();

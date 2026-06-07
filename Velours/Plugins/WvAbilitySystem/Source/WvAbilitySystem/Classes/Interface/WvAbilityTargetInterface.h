@@ -50,7 +50,6 @@ class WVABILITYSYSTEM_API IWvAbilityTargetInterface : public IGenericTeamAgentIn
 
 public:
 	virtual USceneComponent* GetOverlapBaseComponent();
-	virtual FGameplayTag GetAvatarTag() const;
 	virtual FGameplayEffectQuery GetHitEffectQuery();
 
 	virtual void OnSendAbilityAttack(AActor* Actor, const FWvBattleDamageAttackSourceInfo& SourceInfo, const float Damage);
@@ -70,6 +69,8 @@ public:
 	virtual bool IsSprintingMovement() const;
 	virtual bool IsFreezing() const;
 
+	virtual bool IsMeleeAttacking() const { return false; };
+
 	virtual void Freeze() {};
 	virtual void UnFreeze() {};
 
@@ -83,11 +84,10 @@ public:
 
 	virtual void BuildRunAI() {};
 
-	virtual void DoStartCinematic() {};
-	virtual void DoStopCinematic() {};
-	virtual bool IsCinematic() const;
 
 	virtual void OnChangeGenericTeamIdFromInt(const int32 NewTeamID) {};
+
+	virtual void DoKill(const bool bIsForceKill) {};
 
 	FAbilityDeadAnimProcessForEventDelegate OnDeadAnimBeginPlay;
 	FAbilityDeadAnimProcessForEventDelegate OnDeadAnimFinish;
@@ -141,4 +141,37 @@ public:
 	void CallTriggerActorEndOverlap();
 };
 
+
+UINTERFACE(BlueprintType)
+class WVABILITYSYSTEM_API UWvKeyableTargetInterface : public UInterface
+{
+	GENERATED_UINTERFACE_BODY()
+};
+
+class WVABILITYSYSTEM_API IWvKeyableTargetInterface
+{
+	GENERATED_IINTERFACE_BODY()
+
+public:
+	virtual bool IsInputKeyDisable() const { return false; };
+	virtual void SetKeyInputDisable() {};
+	virtual void SetKeyInputEnable() {};
+};
+
+
+UINTERFACE(BlueprintType)
+class WVABILITYSYSTEM_API UWvCinematicTargetInterface : public UInterface
+{
+	GENERATED_UINTERFACE_BODY()
+};
+
+class WVABILITYSYSTEM_API IWvCinematicTargetInterface
+{
+	GENERATED_IINTERFACE_BODY()
+
+public:
+	virtual void DoStartCinematic() {};
+	virtual void DoStopCinematic() {};
+	virtual bool IsCinematic() const { return false; };
+};
 

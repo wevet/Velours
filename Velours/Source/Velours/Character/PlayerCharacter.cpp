@@ -9,7 +9,6 @@
 #include "Component/WvSkeletalMeshComponent.h"
 #include "Component/QTEActionComponent.h"
 #include "Mission/MinimapMarkerComponent.h"
-//#include "Animation/WvAnimInstance.h"
 #include "GameExtension.h"
 #include "Ability/WvAbilitySystemComponent.h"
 
@@ -19,7 +18,6 @@
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/InputComponent.h"
-#include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/Controller.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
@@ -233,7 +231,7 @@ void APlayerCharacter::HandleMeleeAction(const bool bIsPress)
 
 	if (bIsPress)
 	{
-		if (Super::IsMeleePlaying() && !Inventory->CanAimingWeapon())
+		if (Super::IsMeleeAttacking() && !Inventory->CanAimingWeapon())
 		{
 			//const auto Tag = TAG_Character_StateMelee.GetTag().GetTagName();
 			//UE_LOG(LogTemp, Warning, TEXT("Returns nothing as tags are added. %s => [%s]"), *Tag.ToString(), *FString(__FUNCTION__));

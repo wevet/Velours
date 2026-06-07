@@ -124,6 +124,26 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Game_Minimap_Player, "Game.MiniMap.Player");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Game_Minimap_KeyCharacter, "Game.MiniMap.KeyCharacter");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Game_Minimap_EventCheckPoint, "Game.MiniMap.EventCheckPoint");
 
+
+#pragma region Faction
+
+UE_DEFINE_GAMEPLAY_TAG(TAG_Faction_Neutral, "Faction.Neutral");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Faction_Player, "Faction.Player");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Faction_Player_Companion, "Faction.Player.Companion");
+
+UE_DEFINE_GAMEPLAY_TAG(TAG_Faction_Civilian, "Faction.Civilian");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Faction_Police, "Faction.Police");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Faction_Gang, "Faction.Gang");
+
+UE_DEFINE_GAMEPLAY_TAG(TAG_Faction_Vehicle, "Faction.Vehicle");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Faction_Vehicle_Civilian, "Faction.Vehicle.Civilian");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Faction_Vehicle_Police, "Faction.Vehicle.Police");
+
+UE_DEFINE_GAMEPLAY_TAG(TAG_Reputation_Honor, "Reputation.Honor");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Reputation_Wanted, "Reputation.Wanted");
+
+#pragma endregion
+
 #define LOCTEXT_NAMESPACE ""
 
 void FVeloursModule::StartupModule()

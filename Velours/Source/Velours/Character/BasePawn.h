@@ -29,14 +29,14 @@
 
 class UMotionWarpingComponent;
 class UPawnNoiseEmitterComponent;
-
+class ULocomotionComponent;
 class UInventoryComponent;
 class UCombatComponent;
 class UStatusComponent;
 class UWeaknessComponent;
 class UStaticMeshComponent;
 class ULODSyncComponent;
-//class USignificanceComponent;
+class UWvFactionComponent;
 class UMinimapMarkerComponent;
 class UChooserTable;
 class UBehaviorTree;
@@ -51,7 +51,8 @@ class VELOURS_API ABasePawn : public APawn,
 	public IAISightTargetInterface,
 	public IWvAbilitySystemAvatarInterface,
 	public IWvAbilityTargetInterface,
-	public IWvAIActionStateInterface
+	public IWvAIActionStateInterface, 
+	public IWvCinematicTargetInterface
 {
 	GENERATED_BODY()
 
@@ -83,14 +84,13 @@ public:
 	virtual void InitAbilitySystemComponentByData(class UWvAbilitySystemComponentBase* ASC) override;
 	virtual UBehaviorTree* GetBehaviorTree() const override;
 	virtual UWvHitReactDataAsset* GetHitReactDataAsset() const override;
-	virtual FName GetAvatarName() const override;
+	virtual FGameplayTag GetAvatarTag() const override;
 #pragma endregion
 
 #pragma region IWvAbilityTargetInterface
 	virtual FGenericTeamId GetGenericTeamId() const override;
 	virtual void SetGenericTeamId(const FGenericTeamId& NewTeamID) override;
 
-	virtual FGameplayTag GetAvatarTag() const override;
 	virtual USceneComponent* GetOverlapBaseComponent() override;
 	virtual FOnTeamIndexChangedDelegate* GetOnTeamIndexChangedDelegate() override;
 
@@ -115,13 +115,10 @@ public:
 	virtual void DoAttack() override;
 	virtual void DoResumeAttack() override;
 	virtual void DoStopAttack() override;
+	virtual bool IsMeleeAttacking() const override;
 
 	virtual void DoBulletAttack() override;
 	virtual void DoThrowAttack() override;
-
-	virtual void DoStartCinematic() override;
-	virtual void DoStopCinematic() override;
-	virtual bool IsCinematic() const override;
 
 	virtual void DoKill(const bool bIsForceKill) override;
 #pragma endregion
@@ -143,6 +140,13 @@ public:
 	* @return	True if visible from the observer's location
 	*/
 	virtual bool CanBeSeenFrom(const FVector& ObserverLocation, FVector& OutSeenLocation, int32& NumberOfLoSChecksPerformed, float& OutSightStrength, const AActor* IgnoreActor = nullptr, const bool* bWasVisible = nullptr, int32* UserData = nullptr) const;
+#pragma endregion
+
+
+#pragma region IWvCinematicTargetInterface
+	virtual void DoStartCinematic() override;
+	virtual void DoStopCinematic() override;
+	virtual bool IsCinematic() const override;
 #pragma endregion
 
 
@@ -171,11 +175,15 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FOnTeamHandleKillDelegate OnTeamHandleReceiveKillDelegate;
 
+	UPROPERTY()
+	FOnTeamIndexChangedDelegate OnTeamChangedDelegate;
+
 public:
 	static FName MeshComponentName;
 	static FName CapsuleComponentName;
 
 public:
+#pragma region Components
 	virtual class UWvSkeletalMeshComponent* GetWvSkeletalMeshComponent() const;
 
 	UFUNCTION(BlueprintCallable, Category = Components)
@@ -196,6 +204,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = Components)
 	class UMinimapMarkerComponent* GetMinimapMarkerComponent() const;
 
+	UFUNCTION(BlueprintCallable, Category = Components)
+	class ULocomotionComponent* GetLocomotionComponent() const;
+
+	UFUNCTION(BlueprintCallable, Category = Components)
+	class UWvFactionComponent* GetFactionComponent() const;
+#pragma endregion
+
+
 	float GetSkillToWidget() const;
 	float GetHealthToWidget() const;
 	bool IsBotCharacter() const;
@@ -209,13 +225,13 @@ public:
 	float GetAnimRootMotionTranslationScale() const;
 
 
-#pragma region Melee
-	virtual bool IsMeleePlaying() const;
-#pragma endregion
-
 protected:
+#pragma region Components
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UMotionWarpingComponent> MotionWarpingComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class ULocomotionComponent> LocomotionComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UInventoryComponent> ItemInventoryComponent;
@@ -234,6 +250,10 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UMinimapMarkerComponent> MinimapMarkerComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class UWvFactionComponent> WvFactionComponent;
+#pragma endregion
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "BaseCharacter|Config")
 	FGameplayTag CharacterTag;

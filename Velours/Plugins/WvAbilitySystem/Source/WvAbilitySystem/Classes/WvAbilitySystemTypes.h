@@ -203,6 +203,46 @@ enum class EAIActionState : uint8
 };
 
 
+/**
+ *	Defines how a the Ability System is loaded (if ever).
+ */
+UENUM(BlueprintType)
+enum class EAbilitySystemCreationPolicy : uint8
+{
+	Never UMETA(ToolTip = "The Ability System will be always null"),
+	Lazy UMETA(ToolTip = "The Ability System will be null in the client until it is used in the server"),
+	Always UMETA(ToolTip = "The Ability System is loaded when the Actor loads"),
+};
+
+/**
+ * Defines the runtime load/wakeup state of the Ability System.
+ */
+UENUM(BlueprintType)
+enum class EAbilitySystemLoadState : uint8
+{
+	Cold UMETA(ToolTip = "ASC is not loaded. The actor is running with lightweight logic only."),
+	Warm UMETA(ToolTip = "ASC is loaded and initialized, but the actor is not actively fighting."),
+	Hot  UMETA(ToolTip = "ASC is loaded and the actor is actively using combat/gameplay abilities."),
+};
+
+UENUM(BlueprintType)
+enum class EAbilitySystemLoadReason : uint8
+{
+	None,
+	Always,
+	LockOnCandidate,
+	AimCandidate,
+	AIPerception,
+	CombatTarget,
+	IncomingDamage,
+	AttackStart,
+	AbilityActivation,
+	GameplayEffect,
+	Script,
+	Interact,
+};
+
+
 USTRUCT(BlueprintType)
 struct FWvOverlapResult
 {
@@ -789,139 +829,6 @@ protected:
 
 };
 
-USTRUCT(BlueprintType)
-struct FNearestShakableBone
-{
-	GENERATED_BODY()
-
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FName Bone{NAME_None};
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float Weight{0.f};
-};
-
-USTRUCT(BlueprintType)
-struct FTransmitShakableBoneInfo
-{
-	GENERATED_BODY()
-
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TMap<FName, float> OtherBoneTransmitShakeStrength;
-};
-
-USTRUCT(BlueprintType)
-struct FHitReactBoneShake
-{
-	GENERATED_BODY()
-
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float ShakeStrength = 5.f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float ShakeDuration{1.0f};
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TObjectPtr<class UCurveFloat> DampingCurve{nullptr};
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	FTransmitShakableBoneInfo Transmits;
-};
-
-USTRUCT(BlueprintType)
-struct FHitReactBoneShakeStrengthConfig
-{
-	GENERATED_BODY()
-
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	float Strength{ 1.f };
-
-	// bone jitter data
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TMap<FName, FHitReactBoneShake> BoneShakeData;
-};
-
-USTRUCT(BlueprintType)
-struct FSkeletalMeshShakeData
-{
-	GENERATED_BODY()
-
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TMap<FGameplayTag, FHitReactBoneShakeStrengthConfig> StrengthBoneShakeData;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TArray<FName> LockBoneNams;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TMap<FName, FNearestShakableBone> NearestShakableBoneData;
-};
-
-UCLASS(BlueprintType)
-class WVABILITYSYSTEM_API UHitReactBoneShakeDataAsset : public UDataAsset
-{
-	GENERATED_BODY()
-
-public:
-	//Trigger tag - hit jitter data for skeletal mesh bodies
-	UPROPERTY(EditAnywhere, BlueprintReadWrite)
-	TMap<FGameplayTag, FSkeletalMeshShakeData> SkeletalShakeData;
-};
-
-UCLASS(MinimalAPI, Blueprintable)
-class UBoneShakeExecuteData : public UObject
-{
-	GENERATED_BODY()
-
-public:
-	UPROPERTY(BlueprintReadOnly)
-	FName BoneName{NAME_None};
-
-	UPROPERTY(BlueprintReadOnly)
-	FVector ShakeOffsetLocation { FVector::ZeroVector };
-
-	FVector SourceLocation{ FVector::ZeroVector };
-	float Strength = 0.f;
-	float TotalTime = 0.f;
-	float CurTime = 0.f;
-	float Direction = 0.f;
-
-	UPROPERTY()
-	TObjectPtr<class UCurveFloat> DampingCurve = nullptr;
-};
-
-UCLASS(MinimalAPI)
-class USkeletalMeshBoneShakeExecuteData : public UObject
-{
-	GENERATED_BODY()
-
-public:
-	UPROPERTY()
-	TArray<UBoneShakeExecuteData*> BoneShakeDatas;
-	FVector HitDirection{FVector::ZeroVector};
-};
-
-UCLASS(Blueprintable)
-class UAAU_HitReactBoneShakeDATool : public UObject
-{
-	GENERATED_BODY()
-
-public:
-	UFUNCTION(BlueprintCallable)
-	void ResetHitReactBoneShakeDA(class UHitReactBoneShakeDataAsset* DA, class USkeletalMesh* SkeletalMesh, FGameplayTag TriggetTag, FGameplayTag StrengthTag, float BaseStrength, float ShakeBoneStrength, float ShakeDuration, class UCurveFloat* DampingCurve, float NearestBoneDistance, float ShakeBoneDistance);
-
-	UFUNCTION(BlueprintCallable)
-	void ResetSkeletalBoneData(class UHitReactBoneShakeDataAsset* DA, class USkeletalMesh* SkeletalMesh, FGameplayTag TriggetTag, FGameplayTag StrengthTag, float NearestBoneDistance, float ShakeBoneDistance);
-
-private:
-	void SkeletalMeshCalculateAllNearestShakeBone(USkeletalMesh* SkeletalMesh, TArray<FName> ShakeBoneNames, TMap<FName, FTransform> boneName2PosDict, float BoneDistance, FSkeletalMeshShakeData& SkeletalMeshShakeData);
-	void SkeletalMeshCalculateShakeBoneTransmitStrength(USkeletalMesh* SkeletalMesh, TArray<FName> ShakeBoneNames, TMap<FName, FTransform> boneName2PosDict, float BoneDistance, FHitReactBoneShakeStrengthConfig& HitReactBoneShakeStrengthConfig);
-	void SaveDA(class UHitReactBoneShakeDataAsset* DA);
-};
 #pragma endregion
 
 
@@ -1294,5 +1201,4 @@ public:
 
 
 };
-
 
