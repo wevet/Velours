@@ -1,6 +1,6 @@
 {
 	"FileVersion": 3,
-	"EngineAssociation": "{1A013B90-4C59-FC1A-FD6B-84BF114B92D7}",
+	"EngineAssociation": "5.7",
 	"Category": "Samples",
 	"Description": "",
 	"Modules": [
@@ -289,6 +289,30 @@
 		},
 		{
 			"Name": "ScriptableToolsFramework",
+			"Enabled": true
+		},
+		{
+			"Name": "MetaHuman",
+			"Enabled": true,
+			"SupportedTargetPlatforms": [
+				"Win64",
+				"Linux"
+			]
+		},
+		{
+			"Name": "MetaHumanCoreTech",
+			"Enabled": true,
+			"SupportedTargetPlatforms": [
+				"Win64",
+				"Linux"
+			]
+		},
+		{
+			"Name": "MetaHumanCharacter",
+			"Enabled": true
+		},
+		{
+			"Name": "MetaHumanLiveLink",
 			"Enabled": true
 		}
 	],
