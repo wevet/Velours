@@ -26,17 +26,24 @@ void FWvGameplayEffectContext::AddInstigator(class AActor* InInstigator, class A
 	}
 }
 
-bool FWvGameplayEffectContext::NetSerialize(FArchive& Ar, class UPackageMap* Map, bool& bOutSuccess)
+bool FWvGameplayEffectContext::NetSerialize(FArchive& Ar, UPackageMap* Map, bool& bOutSuccess)
 {
-	Super::NetSerialize(Ar, Map, bOutSuccess);
+	bool bSuccess = true;
+
+	Super::NetSerialize(Ar, Map, bSuccess);
 
 	if (Ar.IsLoading())
 	{
 		TargetDataHandle.Clear();
 	}
-	TargetDataHandle.NetSerialize(Ar, Map, bOutSuccess);
+
+	bool bTargetDataSuccess = true;
+	TargetDataHandle.NetSerialize(Ar, Map, bTargetDataSuccess);
+
 	Ar << EffectDataAsset;
 	Ar << EffectGroupIdx;
+
+	bOutSuccess = bSuccess && bTargetDataSuccess;
 	return true;
 }
 

@@ -3,6 +3,9 @@
 
 #include "WvEngineSubsystem.h"
 #include "AbilitySystemGlobals.h"
+#include "WvAbilitySystem.h"
+
+#include UE_INLINE_GENERATED_CPP_BY_NAME(WvEngineSubsystem)
 
 void UWvEngineSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {

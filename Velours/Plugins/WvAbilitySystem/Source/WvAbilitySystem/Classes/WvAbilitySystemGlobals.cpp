@@ -4,6 +4,8 @@
 #include "WvGameplayCueManager.h"
 #include "WvAbilitySystemTypes.h"
 #include "WvGameplayEffectContext.h"
+#include "WvAbilitySystem.h"
+
 #include "GameplayEffect.h"
 #include "Runtime/Launch/Resources/Version.h"
 
@@ -26,14 +28,24 @@ void UWvAbilitySystemGlobals::StartAsyncLoadingObjectLibraries()
 
 void UWvAbilitySystemGlobals::InitGlobalData()
 {
+	if (bWvGlobalDataInitialized)
+	{
+		UE_LOG(LogWvAbility, Warning, TEXT("[UWvAbilitySystemGlobals::InitGlobalData] : InitGlobalData skipped. Already initialized."));
+		return;
+	}
+
+	bWvGlobalDataInitialized = true;
+
+	UE_LOG(LogWvAbility, Log, TEXT("[UWvAbilitySystemGlobals::InitGlobalData] : AbilitySystemGlobalsClass=%s"), *GetClass()->GetPathName());
+
+	Super::InitGlobalData();
+
+	//GetGameplayCueManager();
+
 	FCoreDelegates::OnFEngineLoopInitComplete.AddUObject(this, &UWvAbilitySystemGlobals::HandleEngineInitComplete);
 
 	// Register for PreloadMap so cleanup can occur on map transitions
-#if  (ENGINE_MAJOR_VERSION < 5 || ENGINE_MINOR_VERSION >= 3)
 	FCoreUObjectDelegates::PreLoadMapWithContext.AddUObject(this, &UWvAbilitySystemGlobals::HandlePreLoadMap);
-#else
-	FCoreUObjectDelegates::PreLoadMap.AddUObject(this, &UWvAbilitySystemGlobals::HandlePreLoadMap);
-#endif
 
 #if WITH_EDITORONLY_DATA
 	if (EffectParamTable)
@@ -41,6 +53,7 @@ void UWvAbilitySystemGlobals::InitGlobalData()
 		EffectParamTable->OnDataTableChanged().AddUObject(this, &UWvAbilitySystemGlobals::OnEffectParamTableChanged);
 	}
 #endif
+
 }
 
 void UWvAbilitySystemGlobals::HandleEngineInitComplete()

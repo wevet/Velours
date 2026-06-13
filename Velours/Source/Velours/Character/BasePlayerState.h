@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
 #include "Interface/WvAbilityTargetInterface.h"
+#include "Component/WvPlayerReputationComponent.h"
 #include "BasePlayerState.generated.h"
 
 /**
@@ -51,6 +52,13 @@ public:
 	}
 
 	void SetSquadID(int32 NewSquadID);
+
+public:
+	UWvPlayerReputationComponent* GetPlayerReputationComponent() const;
+
+protected:
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class UWvPlayerReputationComponent> WvPlayerReputationComponent;
 
 private:
 	UPROPERTY()

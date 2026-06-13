@@ -10,6 +10,7 @@
 #include "Component/WeaknessComponent.h"
 #include "Component/LocomotionComponent.h"
 #include "Component/WvFactionComponent.h"
+#include "Component/WvRelationshipComponent.h"
 
 #include "Mission/MinimapMarkerComponent.h"
 #include "Game/WvGameInstance.h"
@@ -108,9 +109,6 @@ ABasePawn::ABasePawn(const FObjectInitializer& ObjectInitializer) : Super(Object
 	PawnNoiseEmitterComponent = ObjectInitializer.CreateDefaultSubobject<UPawnNoiseEmitterComponent>(this, TEXT("PawnNoiseEmitterComponent"));
 	PawnNoiseEmitterComponent->bAutoActivate = 1;
 
-	WvFactionComponent = ObjectInitializer.CreateDefaultSubobject<UWvFactionComponent>(this, TEXT("WvFactionComponent"));
-	WvFactionComponent->bAutoActivate = 1;
-
 	// minimap
 	MinimapMarkerComponent = ObjectInitializer.CreateDefaultSubobject<UMinimapMarkerComponent>(this, TEXT("MinimapMarkerComponent"));
 	MinimapMarkerComponent->bAutoActivate = 1;
@@ -118,6 +116,13 @@ ABasePawn::ABasePawn(const FObjectInitializer& ObjectInitializer) : Super(Object
 	// locomotion
 	LocomotionComponent = ObjectInitializer.CreateDefaultSubobject<ULocomotionComponent>(this, TEXT("LocomotionComponent"));
 	LocomotionComponent->bAutoActivate = 1;
+
+	WvFactionComponent = ObjectInitializer.CreateDefaultSubobject<UWvFactionComponent>(this, TEXT("WvFactionComponent"));
+	WvFactionComponent->bAutoActivate = 1;
+
+	WvRelationshipComponent = ObjectInitializer.CreateDefaultSubobject<UWvRelationshipComponent>(this, TEXT("WvRelationshipComponent"));
+	WvRelationshipComponent->bAutoActivate = 1;
+
 
 	MyTeamID = FGenericTeamId(0);
 	CharacterTag = FGameplayTag::RequestGameplayTag(TAG_Character_Default.GetTag().GetTagName());
@@ -625,6 +630,11 @@ ULocomotionComponent* ABasePawn::GetLocomotionComponent() const
 UWvFactionComponent* ABasePawn::GetFactionComponent() const
 {
 	return WvFactionComponent;
+}
+
+UWvRelationshipComponent* ABasePawn::GetRelationshipComponent() const
+{
+	return WvRelationshipComponent;
 }
 
 void ABasePawn::OnRep_MyTeamID(FGenericTeamId OldTeamID)

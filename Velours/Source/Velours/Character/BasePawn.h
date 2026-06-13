@@ -37,6 +37,7 @@ class UWeaknessComponent;
 class UStaticMeshComponent;
 class ULODSyncComponent;
 class UWvFactionComponent;
+class UWvRelationshipComponent;
 class UMinimapMarkerComponent;
 class UChooserTable;
 class UBehaviorTree;
@@ -79,6 +80,7 @@ public:
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
 #pragma endregion
 
+
 #pragma region IWvAbilitySystemAvatarInterface
 	virtual const FWvAbilitySystemAvatarData& GetAbilitySystemData() override;
 	virtual void InitAbilitySystemComponentByData(class UWvAbilitySystemComponentBase* ASC) override;
@@ -86,6 +88,7 @@ public:
 	virtual UWvHitReactDataAsset* GetHitReactDataAsset() const override;
 	virtual FGameplayTag GetAvatarTag() const override;
 #pragma endregion
+
 
 #pragma region IWvAbilityTargetInterface
 	virtual FGenericTeamId GetGenericTeamId() const override;
@@ -123,10 +126,12 @@ public:
 	virtual void DoKill(const bool bIsForceKill) override;
 #pragma endregion
 
+
 #pragma region IWvAIActionStateInterface
 	virtual void SetAIActionState(const EAIActionState NewAIActionState) override;
 	virtual EAIActionState GetAIActionState() const override;
 #pragma endregion
+
 
 #pragma region IAISightTargetInterface
 	/**
@@ -209,6 +214,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = Components)
 	class UWvFactionComponent* GetFactionComponent() const;
+
+	UFUNCTION(BlueprintCallable, Category = Components)
+	class UWvRelationshipComponent* GetRelationshipComponent() const;
 #pragma endregion
 
 
@@ -253,6 +261,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UWvFactionComponent> WvFactionComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class UWvRelationshipComponent> WvRelationshipComponent;
 #pragma endregion
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "BaseCharacter|Config")

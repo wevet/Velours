@@ -9,9 +9,9 @@
 #include "WvFactionComponent.generated.h"
 
 /// <summary>
-/// ”h”´
+/// Belongs to the Actor category
 /// </summary>
-UCLASS( ClassGroup=(Game), meta=(BlueprintSpawnableComponent) )
+UCLASS( ClassGroup=(Relationship), meta=(BlueprintSpawnableComponent) )
 class VELOURS_API UWvFactionComponent : public UActorComponent
 {
 	GENERATED_BODY()

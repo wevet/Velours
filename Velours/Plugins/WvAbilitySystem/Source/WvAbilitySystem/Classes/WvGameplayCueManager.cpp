@@ -2,6 +2,7 @@
 
 #include "WvGameplayCueManager.h"
 #include "WvAbilitySystem.h"
+
 #include "AbilitySystemGlobals.h"
 #include "AbilitySystemLog.h"
 #include "GameplayCueNotify_Actor.h"
@@ -22,7 +23,7 @@ bool UWvGameplayCueSet::HandleGameplayCueNotify_Internal(AActor* TargetActor, in
 {
 #if  (ENGINE_MAJOR_VERSION < 5 || ENGINE_MINOR_VERSION >= 4)
 
-	UE_LOG(LogAbilitySystem, Log, TEXT("[%s]"), *FString(__FUNCTION__));
+	UE_LOG(LogWvAbility, Log, TEXT("[%s]"), *FString(__FUNCTION__));
 	return Super::HandleGameplayCueNotify_Internal(TargetActor, DataIdx, EventType, Parameters);
 
 #else
@@ -188,7 +189,7 @@ void UWvGameplayCueManager::ActInitializeRuntimeObjectLibrary()
 
 	for (FString Path : RuntimeGameplayCueObjectLibrary.Paths)
 	{
-		UE_LOG(LogWvAbility, Log, TEXT("Path => %s"), *Path);
+		UE_LOG(LogWvAbility, Log, TEXT("[UWvGameplayCueManager::ActInitializeRuntimeObjectLibrary] : Path => %s"), *Path);
 	}
 	//UE_LOG(LogWvAbility, Error, TEXT("%s"), *FString(__FUNCTION__));
 
@@ -199,7 +200,7 @@ AGameplayCueNotify_Actor* UWvGameplayCueManager::GetInstancedCueActor(AActor* Ta
 {
 #if  (ENGINE_MAJOR_VERSION < 5 || ENGINE_MINOR_VERSION >= 4)
 
-	UE_LOG(LogAbilitySystem, Log, TEXT("[%s]"), *FString(__FUNCTION__));
+	UE_LOG(LogWvAbility, Log, TEXT("[%s]"), *FString(__FUNCTION__));
 	return Super::GetInstancedCueActor(TargetActor, CueClass, Parameters);
 
 #else
@@ -312,7 +313,7 @@ void UWvGameplayCueManager::NotifyGameplayCueActorFinished(AGameplayCueNotify_Ac
 {
 #if  (ENGINE_MAJOR_VERSION < 5 || ENGINE_MINOR_VERSION >= 4)
 
-	UE_LOG(LogAbilitySystem, Log, TEXT("[%s]"), *FString(__FUNCTION__));
+	UE_LOG(LogWvAbility, Log, TEXT("[%s]"), *FString(__FUNCTION__));
 	Super::NotifyGameplayCueActorFinished(Actor);
 
 #else

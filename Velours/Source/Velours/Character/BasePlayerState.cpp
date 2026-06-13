@@ -16,6 +16,10 @@ ABasePlayerState::ABasePlayerState(const FObjectInitializer& ObjectInitializer) 
 
 	MyTeamID = FGenericTeamId::NoTeam;
 	MySquadID = INDEX_NONE;
+
+	WvPlayerReputationComponent = ObjectInitializer.CreateDefaultSubobject<UWvPlayerReputationComponent>(this, TEXT("WvPlayerReputationComponent"));
+
+	WvPlayerReputationComponent->bAutoActivate = true;
 }
 
 void ABasePlayerState::PreInitializeComponents()
@@ -42,7 +46,19 @@ void ABasePlayerState::CopyProperties(APlayerState* PlayerState)
 {
 	Super::CopyProperties(PlayerState);
 
-	//@TODO: Copy stats
+	ABasePlayerState* TargetPlayerState = Cast<ABasePlayerState>(PlayerState);
+	if (!TargetPlayerState)
+	{
+		return;
+	}
+
+	TargetPlayerState->SetGenericTeamId(MyTeamID);
+	TargetPlayerState->SetSquadID(MySquadID);
+
+	if (WvPlayerReputationComponent && TargetPlayerState->GetPlayerReputationComponent())
+	{
+		TargetPlayerState->GetPlayerReputationComponent()->CopyReputationFrom(WvPlayerReputationComponent);
+	}
 }
 
 void ABasePlayerState::OnDeactivated()
@@ -57,12 +73,23 @@ void ABasePlayerState::OnReactivated()
 
 void ABasePlayerState::SetSquadID(int32 NewSquadId)
 {
-	if (HasAuthority())
+	if (!HasAuthority())
 	{
-		MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, MySquadID, this);
-
-		MySquadID = NewSquadId;
+		return;
 	}
+
+	if (MySquadID == NewSquadId)
+	{
+		return;
+	}
+
+	MySquadID = NewSquadId;
+	MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, MySquadID, this);
+}
+
+UWvPlayerReputationComponent* ABasePlayerState::GetPlayerReputationComponent() const
+{
+	return WvPlayerReputationComponent;
 }
 
 void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
@@ -78,18 +105,23 @@ void ABasePlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& Out
 
 void ABasePlayerState::SetGenericTeamId(const FGenericTeamId& NewTeamID)
 {
-	if (HasAuthority())
-	{
-		const FGenericTeamId OldTeamID = MyTeamID;
-
-		MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, MyTeamID, this);
-		MyTeamID = NewTeamID;
-		ConditionalBroadcastTeamChanged(this, OldTeamID, NewTeamID);
-	}
-	else
+	if (!HasAuthority())
 	{
 		UE_LOG(LogTemp, Error, TEXT("Cannot set team for %s on non-authority"), *GetPathName(this));
+		return;
 	}
+
+	if (MyTeamID == NewTeamID)
+	{
+		return;
+	}
+
+	const FGenericTeamId OldTeamID = MyTeamID;
+
+	MyTeamID = NewTeamID;
+	MARK_PROPERTY_DIRTY_FROM_NAME(ThisClass, MyTeamID, this);
+
+	ConditionalBroadcastTeamChanged(this, OldTeamID, NewTeamID);
 }
 
 FGenericTeamId ABasePlayerState::GetGenericTeamId() const

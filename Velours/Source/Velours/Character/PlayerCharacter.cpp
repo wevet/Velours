@@ -11,6 +11,8 @@
 #include "Mission/MinimapMarkerComponent.h"
 #include "GameExtension.h"
 #include "Ability/WvAbilitySystemComponent.h"
+#include "Component/WvFactionComponent.h"
+#include "Component/WvRelationshipComponent.h"
 
 #include "Item/BulletHoldWeaponActor.h"
 
@@ -41,6 +43,11 @@ APlayerCharacter::APlayerCharacter(const FObjectInitializer& ObjectInitializer) 
 	// https://forums.unrealengine.com/t/world-partion-current-pawn-vanishes-when-reaching-cell-loading-range-limit/255655/7
 	bIsSpatiallyLoaded = false;
 #endif
+
+	if (WvRelationshipComponent)
+	{
+		WvRelationshipComponent->bRelationshipEnabled = false;
+	}
 
 	// set mini map tag
 	MinimapMarkerComponent->MiniMapMakerTag = TAG_Game_Minimap_Player;
