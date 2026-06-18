@@ -70,9 +70,9 @@ void UPredictionAnimInstance::NativeBeginPlay()
 {
 	Super::NativeBeginPlay();
 
-	bDrawDebugForToe = bDrawDebug && bDrawDebugForToe;
-	bDrawDebugForPelvis = bDrawDebug && bDrawDebugForPelvis;
-	bDrawDebugForTrace = bDrawDebug && bDrawDebugForTrace;
+	bDrawDebugForToe &= bDrawDebug;
+	bDrawDebugForPelvis &= bDrawDebug;
+	bDrawDebugForTrace &= bDrawDebug;
 
 	Character = Cast<ACharacter>(TryGetPawnOwner());
 
@@ -444,14 +444,20 @@ void UPredictionAnimInstance::CheckEndPosByTrace(bool& OutEndPosChanged, FVector
 	FVector LocalToeHitPos = LocalToeTracePos;
 
 	OutEndPosChanged = FVector::DistSquared2D(LocalToeTracePos, InLastToeEndPos) > EndPosChangedDistanceSquareThreshold;
-	if (!OutEndPosChanged && MovementBaseUtility::UseRelativeLocation(CharacterMovementComponent->GetMovementBase()))
+
+	FMovementBaseInterfaceData BaseData(CharacterMovementComponent->GetMovementBaseObject());
+	const bool bUseRelative = MovementBaseUtility::UseRelativeLocation(&BaseData);
+
+	if (!OutEndPosChanged && bUseRelative)
 	{
 		FVector TraceHeight = { 0, 0, Character->GetCapsuleComponent()->GetScaledCapsuleHalfHeight() * 3.f };
 		TArray<AActor*> IgnoreActors;
 		FHitResult Hit;
 
 		// If FootEnd 2D Pos Not Changed, Use Last FootEndPos To Check Hight.
-		UKismetSystemLibrary::LineTraceSingle(GetWorld(), LocalToeTracePos + TraceHeight, LocalToeTracePos - TraceHeight,
+		UKismetSystemLibrary::LineTraceSingle(GetWorld(), 
+			LocalToeTracePos + TraceHeight, 
+			LocalToeTracePos - TraceHeight,
 			TraceChannel, false, IgnoreActors, EDrawDebugTrace::None, Hit, true);
 
 		if (Hit.bBlockingHit)

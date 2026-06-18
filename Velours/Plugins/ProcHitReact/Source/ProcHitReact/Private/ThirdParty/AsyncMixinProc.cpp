@@ -553,7 +553,7 @@ bool FAsyncCondition::BindCompleteDelegate(const FSimpleDelegate& NewDelegate)
 
 	if (!RepeatHandle.IsValid())
 	{
-		RepeatHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateSP(this, &FAsyncCondition::TryToContinue), 0.16);
+		RepeatHandle = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateSP(this, &FAsyncCondition::TryToContinue), 0.16f);
 	}
 
 	return true;

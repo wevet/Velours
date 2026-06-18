@@ -119,7 +119,9 @@ void FCustomFootSolverEditMode::Render(const FSceneView* View, FViewport* Viewpo
 			StartTransform = RuntimeNode->KneeAnimatedTransformArray[i];
 			StartTransform.AddToTranslation(RuntimeNode->SolverInputData.FeetBones[i].KneeDirectionOffset);
 
-			const float Scale = View->WorldToScreen(StartTransform.GetLocation()).W * (4.0f / View->UnscaledViewRect.Width() / View->ViewMatrices.GetProjectionMatrix().M[0][0]);
+			const double ViewToClipM00 = View->ViewMatrices.GetViewToClip().M[0][0];
+			const float Scale = View->WorldToScreen(
+				StartTransform.GetLocation()).W * (4.0f / View->UnscaledViewRect.Width() / ViewToClipM00);
 			DrawSphere(PDI, StartTransform.GetLocation(), FRotator::ZeroRotator, FVector(8.0f) * Scale, 64, 64, SphereMaterialProxy, SDPG_Foreground);
 			DrawDashedLine(PDI, RuntimeNode->KneeAnimatedTransformArray[i].GetLocation(), StartTransform.GetLocation(), FLinearColor::Black, 2, 5);
 		}
@@ -144,8 +146,10 @@ void FCustomFootSolverEditMode::Render(const FSceneView* View, FViewport* Viewpo
 						PDI->SetHitProxy(new HFingerSolverHandleHitProxy(i, j, f));
 						const FVector TraceOffset = RuntimeNode->SolverInputData.FeetBones[SpineOrderIndex].FingerBoneArray[f].TraceOffset;
 						FingerTransform.SetLocation(RuntimeNode->FeetFingerTransformArray[i][j][f].GetLocation() + TraceOffset);
+
+						const double ViewToClipM00 = View->ViewMatrices.GetViewToClip().M[0][0];
 						const float Scale = View->WorldToScreen(FingerTransform.GetLocation()).W *
-							(4.0f / View->UnscaledViewRect.Width() / View->ViewMatrices.GetProjectionMatrix().M[0][0]);
+							(4.0f / View->UnscaledViewRect.Width() / ViewToClipM00);
 
 						DrawSphere(
 							PDI,
@@ -173,8 +177,10 @@ void FCustomFootSolverEditMode::Render(const FSceneView* View, FViewport* Viewpo
 					FootAnkleTransform.SetRotation(FQuat::Identity);
 					FootAnkleTransform.SetScale3D(FVector(0.5f, 0.25f, 1.0f));
 					FMatrix FootAnkleMatrix = FootAnkleTransform.ToMatrixNoScale();
+
+					const double ViewToClipM00 = View->ViewMatrices.GetViewToClip().M[0][0];
 					const float FootAnkleTransformScale = View->WorldToScreen(FootAnkleLocation).W *
-						(8.0f / View->UnscaledViewRect.Width() / View->ViewMatrices.GetProjectionMatrix().M[0][0]);
+						(8.0f / View->UnscaledViewRect.Width() / ViewToClipM00);
 					const float SideSizing = RuntimeNode->FeetWidthSpacing[i][j];
 					DrawCylinder(PDI, FootAnkleLocation, FootTipTransform, SideSizing, 6, FootMaterialProxy, 5);
 				}

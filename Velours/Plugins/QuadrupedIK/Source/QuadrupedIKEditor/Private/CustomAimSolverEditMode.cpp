@@ -183,8 +183,9 @@ void FCustomAimSolverEditMode::Render(const FSceneView* View, FViewport* Viewpor
 		const FTransform StartTransform = RuntimeNode->DebugLookAtTransform;
 		const FVector LocalHeadTransform = RuntimeNode->HeadOrigTransform.GetLocation();
 
-		const float Scale = View->WorldToScreen(
-			StartTransform.GetLocation()).W * (4.0f / View->UnscaledViewRect.Width() / View->ViewMatrices.GetProjectionMatrix().M[0][0]);
+		const float ViewToClipM00 = View->ViewMatrices.GetViewToClip().M[0][0];
+		const float Scale = View->WorldToScreen(StartTransform.GetLocation()).W * (4.0f / View->UnscaledViewRect.Width() / ViewToClipM00);
+
 		DrawSphere(PDI, StartTransform.GetLocation(), 
 			FRotator::ZeroRotator, FVector(8.0f) * Scale, K_NumSize, K_Radius, TargetMaterialProxy, SDPG_Foreground);
 		DrawDashedLine(PDI, LocalHeadTransform, StartTransform.GetLocation(), FLinearColor::Black, 2, 5);
@@ -201,8 +202,8 @@ void FCustomAimSolverEditMode::Render(const FSceneView* View, FViewport* Viewpor
 
 		const FTransform StartTransform = RuntimeNode->HeadTransforms[Index].Transform;
 
-		float Scale = View->WorldToScreen(
-			StartTransform.GetLocation()).W * (4.0f / View->UnscaledViewRect.Width() / View->ViewMatrices.GetProjectionMatrix().M[0][0]);
+		const float ViewToClipM00 = View->ViewMatrices.GetViewToClip().M[0][0];
+		float Scale = View->WorldToScreen(StartTransform.GetLocation()).W * (4.0f / View->UnscaledViewRect.Width() / ViewToClipM00);
 
 		if (!RuntimeNode->bIsHeadDrawGizmos)
 		{
@@ -225,9 +226,8 @@ void FCustomAimSolverEditMode::Render(const FSceneView* View, FViewport* Viewpor
 			const FMaterialRenderProxy* WhiteMatProxy = MaterialInst->GetRenderProxy();
 			FTransform Hand_Default_Transform = RuntimeNode->DebugHandTransforms[Index];
 
-			const float Scale = View->WorldToScreen(
-				Hand_Default_Transform.GetLocation()).W *
-				(4.0f / View->UnscaledViewRect.Width() / View->ViewMatrices.GetProjectionMatrix().M[0][0]);
+			const float ViewToClipM00 = View->ViewMatrices.GetViewToClip().M[0][0];
+			const float Scale = View->WorldToScreen(Hand_Default_Transform.GetLocation()).W * (4.0f / View->UnscaledViewRect.Width() / ViewToClipM00);
 
 			DrawSphere(PDI, Hand_Default_Transform.GetLocation(),
 				FRotator::ZeroRotator, FVector(8.0f) * Scale, K_NumSize, K_Radius, WhiteMatProxy, SDPG_Foreground);
@@ -266,9 +266,10 @@ void FCustomAimSolverEditMode::Render(const FSceneView* View, FViewport* Viewpor
 					PDI->SetHitProxy(new FCustomAimNSEWHandleHitProxy(Index, 1));
 					FTransform NorthPoleTransform = RuntimeNode->ElbowBoneTransformArray[Index];
 					NorthPoleTransform.AddToTranslation(RuntimeNode->AimingHandLimbs[Index].NorthPoleOffset);
+
+					const float NorthViewToClipM00 = View->ViewMatrices.GetViewToClip().M[0][0];
 					const float NorthScale = View->WorldToScreen(
-						NorthPoleTransform.GetLocation()).W * (4.0f / View->UnscaledViewRect.Width() / 
-							View->ViewMatrices.GetProjectionMatrix().M[0][0]);
+						NorthPoleTransform.GetLocation()).W * (4.0f / View->UnscaledViewRect.Width() / NorthViewToClipM00);
 
 					DrawSphere(PDI, NorthPoleTransform.GetLocation(), 
 						FRotator::ZeroRotator, FVector(6.0f) * NorthScale, K_NumSize, K_Radius, Red_Mat_Proxy, SDPG_Foreground);
@@ -281,9 +282,10 @@ void FCustomAimSolverEditMode::Render(const FSceneView* View, FViewport* Viewpor
 					PDI->SetHitProxy(new FCustomAimNSEWHandleHitProxy(Index, 2));
 					FTransform SouthPoleTransform = RuntimeNode->ElbowBoneTransformArray[Index];
 					SouthPoleTransform.AddToTranslation(RuntimeNode->AimingHandLimbs[Index].SouthPoleOffset);
+
+					const float SouthViewToClipM00 = View->ViewMatrices.GetViewToClip().M[0][0];
 					const float SouthScale = View->WorldToScreen(
-						SouthPoleTransform.GetLocation()).W * (4.0f / View->UnscaledViewRect.Width() /
-							View->ViewMatrices.GetProjectionMatrix().M[0][0]);
+						SouthPoleTransform.GetLocation()).W * (4.0f / View->UnscaledViewRect.Width() / SouthViewToClipM00);
 
 					DrawSphere(PDI, SouthPoleTransform.GetLocation(), 
 						FRotator::ZeroRotator, FVector(6.0f) * SouthScale, K_NumSize, K_Radius, Blue_Mat_Proxy, SDPG_Foreground);
@@ -296,9 +298,10 @@ void FCustomAimSolverEditMode::Render(const FSceneView* View, FViewport* Viewpor
 					PDI->SetHitProxy(new FCustomAimNSEWHandleHitProxy(Index, 3));
 					FTransform EastPoleTransform = RuntimeNode->ElbowBoneTransformArray[Index];
 					EastPoleTransform.AddToTranslation(RuntimeNode->AimingHandLimbs[Index].EastPoleOffset);
+
+					const float EastViewToClipM00 = View->ViewMatrices.GetViewToClip().M[0][0];
 					const float EastScale = View->WorldToScreen(
-						EastPoleTransform.GetLocation()).W * (4.0f / View->UnscaledViewRect.Width() / 
-							View->ViewMatrices.GetProjectionMatrix().M[0][0]);
+						EastPoleTransform.GetLocation()).W * (4.0f / View->UnscaledViewRect.Width() / EastViewToClipM00);
 
 					DrawSphere(PDI, EastPoleTransform.GetLocation(), 
 						FRotator::ZeroRotator, FVector(6.0f) * EastScale, K_NumSize, K_Radius, Green_Mat_Proxy, SDPG_Foreground);
@@ -311,9 +314,10 @@ void FCustomAimSolverEditMode::Render(const FSceneView* View, FViewport* Viewpor
 					PDI->SetHitProxy(new FCustomAimNSEWHandleHitProxy(Index, 4));
 					FTransform WestPoleTransform = RuntimeNode->ElbowBoneTransformArray[Index];
 					WestPoleTransform.AddToTranslation(RuntimeNode->AimingHandLimbs[Index].WestPoleOffset);
+
+					const float WestViewToClipM00 = View->ViewMatrices.GetViewToClip().M[0][0];
 					const float WestScale = View->WorldToScreen(
-						WestPoleTransform.GetLocation()).W * (4.0f / View->UnscaledViewRect.Width() / 
-							View->ViewMatrices.GetProjectionMatrix().M[0][0]);
+						WestPoleTransform.GetLocation()).W * (4.0f / View->UnscaledViewRect.Width() / WestViewToClipM00);
 
 					DrawSphere(PDI, WestPoleTransform.GetLocation(), 
 						FRotator::ZeroRotator, FVector(6.0f) * WestScale, K_NumSize, K_Radius, Yellow_Mat_Proxy, SDPG_Foreground);
@@ -336,9 +340,8 @@ void FCustomAimSolverEditMode::Render(const FSceneView* View, FViewport* Viewpor
 					FTransform StartTransformKnee = RuntimeNode->ElbowBoneTransformArray[Index];
 					StartTransformKnee.AddToTranslation(RuntimeNode->AimingHandLimbs[Index].ElbowPoleOffset);
 
-					const float Scale = View->WorldToScreen(
-						StartTransformKnee.GetLocation()).W * (4.0f / View->UnscaledViewRect.Width() / 
-							View->ViewMatrices.GetProjectionMatrix().M[0][0]);
+					const float ViewToClipM00 = View->ViewMatrices.GetViewToClip().M[0][0];
+					const float Scale = View->WorldToScreen(StartTransformKnee.GetLocation()).W * (4.0f / View->UnscaledViewRect.Width() / ViewToClipM00);
 
 					DrawSphere(PDI, StartTransformKnee.GetLocation(), 
 						FRotator::ZeroRotator, FVector(6.0f) * Scale, K_NumSize, K_Radius, ElbowMaterialProxy, SDPG_Foreground);

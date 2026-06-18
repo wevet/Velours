@@ -586,7 +586,7 @@ void UCombatComponent::OnTagUpdate(const FGameplayTag Tag, const bool bIsTagExis
 		IsDead = bIsTagExists;
 		if (IsDead)
 		{
-			GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UCombatComponent::HandleDeath, 0.01, true);
+			GetWorld()->GetTimerManager().SetTimer(TimerHandle, this, &UCombatComponent::HandleDeath, 0.01f, true);
 			UE_LOG(LogTemp, Error, TEXT("HandleDeath => %s"), *FString(__FUNCTION__));
 		}
 	}
