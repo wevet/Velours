@@ -2,6 +2,7 @@
 
 
 #include "Character/VBaseHuman.h"
+#include "Component/WvSkeletalMeshComponent.h"
 
 #include "Components/CapsuleComponent.h"
 
@@ -20,8 +21,13 @@ AVBaseHuman::AVBaseHuman(const FObjectInitializer& ObjectInitializer) : Super(Ob
 	CapsuleComponent->bDynamicObstacle = false;
 
 	CapsuleComponent->SetLineThickness(0.5f);
-
 	RootComponent = CapsuleComponent;
+
+
+	SkeletalMeshComponent = ObjectInitializer.CreateDefaultSubobject<UWvSkeletalMeshComponent>(this, ABasePawn::MeshComponentName);
+	SkeletalMeshComponent->SetupAttachment(CapsuleComponent);
+	SkeletalMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
 
 }
 
@@ -50,4 +56,10 @@ void AVBaseHuman::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
 }
+
+UWvSkeletalMeshComponent* AVBaseHuman::GetWvSkeletalMeshComponent() const
+{
+	return SkeletalMeshComponent;
+}
+
 

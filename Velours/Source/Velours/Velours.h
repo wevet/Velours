@@ -175,8 +175,7 @@ VELOURS_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(TAG_Reputation_Wanted);
 
 
 #define NEARLEST_TARGET_SYNC_POINT FName(TEXT("NearlestTarget"))
-#define AI_NEARLEST_TARGET_SYNC_POINT FName(TEXT("AI_NearlestTarget"))
-#define FINISHER_TARGET_SYNC_POINT FName(TEXT("FinisherTarget"))
+#define TAKEDOWN_TARGET_SYNC_POINT FName(TEXT("TakeDownTarget"))
 
 /*
 * project custom collision preset

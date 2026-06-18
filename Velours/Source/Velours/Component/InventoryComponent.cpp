@@ -8,6 +8,7 @@
 #include "Item/BulletHoldWeaponActor.h"
 #include "Game/WvGameInstance.h"
 #include "Misc/WvCommonUtils.h"
+#include "WvSkeletalMeshComponent.h"
 
 #include "Kismet/KismetMathLibrary.h"
 
@@ -111,7 +112,7 @@ void UInventoryComponent::AddInventory(class AItemBaseActor* NewItem)
 	const auto Owner = NewItem ? NewItem->GetOwner() : nullptr;
 	if (IsValid(Owner))
 	{
-		//NewItem->SetOwner(Character.Get());
+		NewItem->SetOwner(Character.Get());
 	}
 
 	if (AWeaponBaseActor* Weapon = Cast<AWeaponBaseActor>(NewItem))
@@ -435,21 +436,25 @@ void UInventoryComponent::CreateWeaponInstances()
 		{
 			if (SpawnInfo.ActorToSpawn)
 			{
-				//FActorSpawnParameters SpawnParams;
-				//SpawnParams.Owner = Character.Get();
-				//SpawnParams.Instigator = nullptr;
-				//AItemBaseActor* ItemPtr = GetWorld()->SpawnActorDeferred<AItemBaseActor>(SpawnInfo.ActorToSpawn, FTransform::Identity, Character.Get());
-				//ItemPtr->FinishSpawning(FTransform::Identity, /*bIsDefaultTransform=*/ true);
-				//ItemPtr->SetActorRelativeTransform(SpawnInfo.AttachTransform);
+				FActorSpawnParameters SpawnParams;
+				SpawnParams.Owner = Character.Get();
+				SpawnParams.Instigator = nullptr;
+				AItemBaseActor* ItemPtr = GetWorld()->SpawnActorDeferred<AItemBaseActor>(SpawnInfo.ActorToSpawn, FTransform::Identity, Character.Get());
+				ItemPtr->FinishSpawning(FTransform::Identity, /*bIsDefaultTransform=*/ true);
+				ItemPtr->SetActorRelativeTransform(SpawnInfo.AttachTransform);
 
-				//ItemPtr->AttachToComponent(Character->GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, SpawnInfo.AttachSocket);
-				//ItemPtr->SetActorHiddenInGame(true);
+				if (Character->GetWvSkeletalMeshComponent())
+				{
+					ItemPtr->AttachToComponent(Character->GetWvSkeletalMeshComponent(), FAttachmentTransformRules::KeepRelativeTransform, SpawnInfo.AttachSocket);
+					ItemPtr->SetActorHiddenInGame(true);
 
-				//if (!Character->GetMesh()->DoesSocketExist(SpawnInfo.AttachSocket))
-				//{
-				//	UE_LOG(LogTemp, Warning, TEXT("GetMesh DoesNotSocket => %s, [%s]"), *SpawnInfo.AttachSocket.ToString(), *FString(__FUNCTION__));
-				//}
-				//AddInventory(ItemPtr);
+					if (!Character->GetWvSkeletalMeshComponent()->DoesSocketExist(SpawnInfo.AttachSocket))
+					{
+						UE_LOG(LogTemp, Warning, TEXT("GetMesh DoesNotSocket => %s, [%s]"), *SpawnInfo.AttachSocket.ToString(), *FString(__FUNCTION__));
+					}
+
+				}
+				AddInventory(ItemPtr);
 
 			}
 		}
@@ -495,7 +500,7 @@ void UInventoryComponent::CreateWeaponInstances()
 #if 1 //OUTPUT_LOG
 	for (TPair<EAttackWeaponState, TArray<AWeaponBaseActor*>>Pair : WeaponActorMap)
 	{
-		const FString CategoryName = *FString::Format(TEXT("Category => {0}"), { *GETENUMSTRING("/Script/Redemption.EAttackWeaponState", Pair.Key) });
+		const FString CategoryName = *FString::Format(TEXT("Category => {0}"), { *GETENUMSTRING("/Script/Velours.EAttackWeaponState", Pair.Key) });
 		for (auto Weapon : Pair.Value)
 		{
 			UE_LOG(LogTemp, Log, TEXT("%s, WeaponName => %s"), *CategoryName, *Weapon->GetName());

@@ -7,6 +7,7 @@
 #include "InputActionValue.h"
 #include "PlayerCharacter.generated.h"
 
+class UWvSpringArmComponent;
 class UHitTargetComponent;
 class UQTEActionComponent;
 class AWvPlayerController;
@@ -42,11 +43,20 @@ protected:
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class UWvSpringArmComponent> CameraBoom;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class UCameraComponent> TPSCamera;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UQTEActionComponent> QTEActionComponent;
 
 
 public:
 	FORCEINLINE class UQTEActionComponent* GetQTEActionComponent() const { return QTEActionComponent; }
+	FORCEINLINE class UWvSpringArmComponent* GetCameraBoom() const { return CameraBoom; }
+	FORCEINLINE class UCameraComponent* GetTPSCamera() const { return TPSCamera; }
+
 
 #pragma region IWvKeyableTargetInterface
 	virtual bool IsInputKeyDisable() const override;

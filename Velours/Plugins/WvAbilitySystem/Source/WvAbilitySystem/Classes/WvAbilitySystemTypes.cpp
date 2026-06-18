@@ -134,6 +134,8 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_HitImpact_Attack, "GameplayCue.HitImpact.
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_HitImpact_Damage, "GameplayCue.HitImpact.Damage");
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_HitImpact_Weakness, "GameplayCue.HitImpact.Weakness");
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_HitImpact_Bullet, "GameplayCue.HitImpact.Bullet");
+UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_HitImpact_Skill, "GameplayCue.HitImpact.Skill");
+
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_HitImpact_Scar, "GameplayCue.HitImpact.Scar");
 UE_DEFINE_GAMEPLAY_TAG(TAG_GameplayCue_HitImpact_Environment_BulletHit, "GameplayCue.HitImpact.Environment.BulletHit");
 
@@ -305,30 +307,43 @@ void UWvAbilityEffectDataAsset::PostLoad()
 
 void UWvAbilityEffectDataAsset::CreateExData(FOnceApplyEffect& Effect)
 {
-	const auto ASG = ASC_GLOBAL();
+	const UWvAbilitySystemGlobals* ASG = ASC_GLOBAL();
 	if (!IsValid(ASG))
 	{
 		UE_LOG(LogWvAbility, Error, TEXT("not valid UWvAbilitySystemGlobals => %s"), *FString(__FUNCTION__));
 		return;
 	}
 
-	if (!IsValid(Effect.ExData))
+	if (IsValid(Effect.ExData))
 	{
-		UE_LOG(LogWvAbility, Warning, TEXT("already created instance Effect.ExData => %s"), *FString(__FUNCTION__));
+		UE_LOG(LogWvAbility, Verbose, TEXT("already created instance Effect.ExData => %s"), *FString(__FUNCTION__));
 		return;
 	}
 
 	FSoftObjectPath AssetClassPath = ASG->ApplyEffectConfigExDataClass;
-	UClass* GCMClass = LoadClass<UApplyEffectExData>(nullptr, *AssetClassPath.ToString(), nullptr, LOAD_None, nullptr);
-	if (GCMClass)
+	UClass* ExDataClass = LoadClass<UApplyEffectExData>(nullptr, *AssetClassPath.ToString(), nullptr, LOAD_None, nullptr);
+
+	if (!ExDataClass)
 	{
-		Effect.ExData = NewObject<UApplyEffectExData>(this, GCMClass, NAME_None);
-		Effect.ExData->FeatureTags = ASG->ApplyEffectFeatureGroupTemplate;
-		UE_LOG(LogWvAbility, Log, TEXT("created instance Effect.ExData => %s"), *FString(__FUNCTION__));
+		UE_LOG(LogWvAbility, Warning, TEXT("not valid UApplyEffectExData LoadClass. Path=%s => %s"), *AssetClassPath.ToString(), *FString(__FUNCTION__));
+		return;
 	}
-	else
+
+	if (!ExDataClass->IsChildOf(UApplyEffectExData::StaticClass()))
 	{
-		UE_LOG(LogWvAbility, Warning, TEXT("not valid UApplyEffectExData LoadClass => %s"), *FString(__FUNCTION__));
+		UE_LOG(LogWvAbility, Warning, TEXT("ExDataClass is not child of UApplyEffectExData. Class=%s => %s"), *GetNameSafe(ExDataClass), *FString(__FUNCTION__));
+		return;
+	}
+
+	Modify();
+
+	Effect.ExData = NewObject<UApplyEffectExData>(this, ExDataClass, NAME_None, RF_Transactional);
+
+	if (Effect.ExData)
+	{
+		Effect.ExData->FeatureTags = ASG->ApplyEffectFeatureGroupTemplate;
+		MarkPackageDirty();
+		UE_LOG(LogWvAbility, Log, TEXT("created instance Effect.ExData. Class=%s => %s"), *GetNameSafe(ExDataClass), *FString(__FUNCTION__));
 	}
 }
 #endif
@@ -402,7 +417,7 @@ const FHitReactInfoRow* UWvHitReactDataAsset::GetHitReactInfoRow_Weapon(const FN
 	UDataTable* TablePtr = WeaponHitReactTables.FindRef(WeaponName);
 	if (!TablePtr)
 	{
-		return nullptr;
+		TablePtr = NormalHitReactTable;
 	}
 
 	return GetHitReactInfoRow(TablePtr, ASC, Tag);
@@ -457,14 +472,12 @@ FGameplayTag UAIActionStateDataAsset::FindActionStateTag(const EAIActionState In
 
 FFinisherAnimationContainer UFinisherDataAsset::FindContainer(const FGameplayTag Tag) const
 {
-	//const bool bIsValid = (FinisherAnimationMap.Num() > 0 && FinisherAnimationMap.Contains(Tag));
-	if (FinisherAnimationMap.Contains(Tag))
+	if (const FFinisherAnimationContainer* Container = FinisherAnimationMap.Find(Tag))
 	{
-		return FinisherAnimationMap[Tag];
+		return *Container;
 	}
 
-	FFinisherAnimationContainer Container;
-	return Container;
+	return FFinisherAnimationContainer();
 }
 
 void FWvBattleDamageAttackTargetInfo::SetMaxDamageWeaknessName(const FName NewMaxDamageWeaknessName)

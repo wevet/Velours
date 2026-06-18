@@ -85,7 +85,7 @@ protected:
 	FName WeaponKeyName;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon")
-	UWeaponParameterDataAsset* UWeaponParameterDA;
+	UWeaponParameterDataAsset* WeaponParameterDA;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Weapon")
 	FGameplayTag Itemtag{ FGameplayTag::EmptyTag };

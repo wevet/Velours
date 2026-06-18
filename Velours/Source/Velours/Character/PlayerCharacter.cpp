@@ -4,6 +4,7 @@
 #include "Character/PlayerCharacter.h"
 #include "Velours.h"
 #include "WvPlayerController.h"
+#include "Component/WvSpringArmComponent.h"
 #include "Component/InventoryComponent.h"
 #include "Component/HitTargetComponent.h"
 #include "Component/WvSkeletalMeshComponent.h"
@@ -88,6 +89,22 @@ void APlayerCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	QTEActionComponent->AddTickPrerequisiteActor(this);
+
+	CameraBoom = FindComponentByClass<UWvSpringArmComponent>();
+
+	{
+		auto Components = GetComponentsByTag(UCameraComponent::StaticClass(), TEXT("TPS Camera"));
+		for (auto Comp : Components)
+		{
+			if (UCameraComponent* CamComp = Cast<UCameraComponent>(Comp))
+			{
+				TPSCamera = CamComp;
+			}
+
+		}
+	}
+	
+	
 
 	QTEActionComponent->QTEBeginDelegate.AddUniqueDynamic(this, &ThisClass::OnQTEBegin_Callback);
 	QTEActionComponent->QTEEndDelegate.AddUniqueDynamic(this, &ThisClass::OnQTEEnd_Callback);

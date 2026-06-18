@@ -350,6 +350,27 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
 	ELSOverlayState OverlayState = ELSOverlayState::None;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
+	FRotator LookingRotation{ FRotator::ZeroRotator };
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
+	bool bAiming{ false };
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion|AimOffset")
+	bool bLookAtAimOffset{ false };
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion|Input")
+	bool bIsBackwardInputEnable{false};
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion|Input")
+	FVector MovementInput{ FVector::ZeroVector };
+
+	TWeakObjectPtr<AActor> LookAtTarget{ nullptr };
+
+	TWeakObjectPtr<USceneComponent> LookAtTargetComponent{ nullptr };
+
+
+
 public:
 	FLocomotionEssencialVariables()
 	{}

@@ -44,7 +44,21 @@ class UBehaviorTree;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogBaseCharacter, All, All)
 
+namespace CharacterDebug
+{
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+
+	extern TAutoConsoleVariable<int32> CVarDebugCharacterStatus;
+	extern TAutoConsoleVariable<int32> CVarDebugCombatSystem;
+
+#endif
+}
+
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnAbilitySystemAvailable, UWvAbilitySystemComponent*);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FActionStateChangeDelegate, EAIActionState, NewAIActionState, EAIActionState, PrevAIActionState);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FBoolOneParamDelegate, bool, bEnable);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOverlayChangeDelegate, const ELSOverlayState, CurrentOverlay);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FAsyncLoadCompleteDelegate);
 
 UCLASS(Abstract)
 class VELOURS_API ABasePawn : public APawn, 
@@ -183,9 +197,34 @@ public:
 	UPROPERTY()
 	FOnTeamIndexChangedDelegate OnTeamChangedDelegate;
 
+	UPROPERTY(BlueprintAssignable)
+	FActionStateChangeDelegate ActionStateChangeDelegate;
+
+	UPROPERTY(BlueprintAssignable)
+	FAsyncLoadCompleteDelegate AsyncLoadCompleteDelegate;
+
+	UPROPERTY(BlueprintAssignable)
+	FAsyncLoadCompleteDelegate AsyncMeshesLoadCompleteDelegate;
+
+	UPROPERTY(BlueprintAssignable)
+	FBoolOneParamDelegate AimingChangeDelegate;
+
+	UPROPERTY(BlueprintAssignable)
+	FBoolOneParamDelegate OnSkillEnableDelegate;
+
+	UPROPERTY(BlueprintAssignable)
+	FBoolOneParamDelegate OnJumpChangeDelegate;
+
+	UPROPERTY(BlueprintAssignable)
+	FOverlayChangeDelegate OverlayChangeDelegate;
+
 public:
 	static FName MeshComponentName;
 	static FName CapsuleComponentName;
+
+	static FName ClimbSyncPoint;
+	static FName BackwardInputSyncPoint;
+
 
 public:
 #pragma region Components
@@ -219,18 +258,72 @@ public:
 	class UWvRelationshipComponent* GetRelationshipComponent() const;
 #pragma endregion
 
+	UFUNCTION(BlueprintCallable, Category = Overlay)
+	FTransform GetPivotOverlayTansform() const;
+
+
 
 	float GetSkillToWidget() const;
 	float GetHealthToWidget() const;
+	bool IsHealthHalf() const;
 	bool IsBotCharacter() const;
 	bool IsLeader() const;
+	bool IsTargetLock() const;
 
+	UFUNCTION(BlueprintCallable, Category = Action)
+	const bool OverlayStateChange(const ELSOverlayState CurrentOverlay);
+
+	UFUNCTION(BlueprintCallable, Category = "BaseCharacter|Shape")
+	void SetGenderType(const EGenderType InGenderType);
+
+	UFUNCTION(BlueprintCallable, Category = "BaseCharacter|Shape")
+	EGenderType GetGenderType() const;
+
+	UFUNCTION(BlueprintCallable, Category = "BaseCharacter|Shape")
+	void SetBodyShapeType(const EBodyShapeType InBodyShapeType);
+
+	UFUNCTION(BlueprintCallable, Category = "BaseCharacter|Shape")
+	EBodyShapeType GetBodyShapeType() const;
+
+	UFUNCTION(BlueprintCallable, Category = "BaseCharacter|Shape")
+	FCharacterInfo GetCharacterInfo() const;
+
+
+#pragma region NearlestAction
+	const TArray<AActor*> FindNearestTargets(const float Distance, const float AngleThreshold);
+	AActor* FindNearestTarget(const float Distance, const float AngleThreshold, bool bTargetCheckBattled = true);
+
+
+	void CalcurateNearlestTarget(const float SyncPointWeight);
+	void ResetNearlestTarget();
+	void FindNearestTarget(AActor* Target, const float SyncPointWeight);
+	void FindNearestTarget(const FVector TargetPosition, const float SyncPointWeight);
+
+	void FindNearestTarget(const FAttackMotionWarpingData& AttackMotionWarpingData);
+
+#pragma endregion
+
+#pragma region VehicleAction
 	void BeginDrive();
 	void EndDrive();
 	bool IsVehicleDriving() const;
+#pragma endregion
 
 	void SetAnimRootMotionTranslationScale(float InAnimRootMotionTranslationScale);
 	float GetAnimRootMotionTranslationScale() const;
+
+
+	int32 GetCombatAnimationIndex() const;
+	int32 CloseCombatMaxComboCount(const int32 Index) const;
+	UAnimMontage* GetCloseCombatAnimMontage(const int32 Index, const FGameplayTag Tag) const;
+	float CalcurateBodyShapePlayRate() const;
+	void CalculateBackwardInputRotation();
+
+
+#pragma region AsyncLoad
+	virtual void RequestAsyncLoad();
+	virtual void RequestComponentsAsyncLoad();
+#pragma endregion
 
 
 protected:
@@ -292,6 +385,28 @@ protected:
 
 	UPROPERTY(Replicated, VisibleInstanceOnly, BlueprintReadOnly, Category = "BaseCharacter|Abilities")
 	EAbilitySystemLoadReason LastAbilitySystemLoadReason = EAbilitySystemLoadReason::None;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "BaseCharacter|Config")
+	FFinisherConfig FinisherConfig;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Character|Overlay")
+	ELSOverlayState SelectableOverlayState;
+
+#pragma region DA
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "BaseCharacter|Load")
+	bool bIsAllowAsyncLoadComponentAssets = true;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "BaseCharacter|Load")
+	TMap<FGameplayTag, TSoftObjectPtr<UDataAsset>> GameDataAssets;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "BaseCharacter|Load")
+	UAIActionStateDataAsset* AIActionStateDA;
+
+	//TObjectPtr<class UChooserTable> OverlayAnimationTable{ nullptr };
+	//TObjectPtr<class UChooserTable> FoleyAssetTable{ nullptr };
+#pragma endregion
+
+
 
 protected:
 	UFUNCTION()
@@ -358,4 +473,36 @@ private:
 	/** Scale to apply to root motion translation on this Character */
 	UPROPERTY(Replicated)
 	float AnimRootMotionTranslationScale{1.0f};
+
+
+
+#pragma region AsyncLoad
+
+	virtual void OnAsyncLoadCompleteHandler();
+	virtual void OnSyncLoadCompleteHandler();
+
+	template<typename T>
+	T* OnAsyncLoadDataAsset(const FGameplayTag Tag);
+
+	template<typename T>
+	T* OnSyncLoadDataAsset(const FGameplayTag Tag);
+
+	UPROPERTY()
+	TObjectPtr<UCloseCombatAnimationDataAsset> CloseCombatDA;
+
+	UPROPERTY()
+	TObjectPtr<UFinisherDataAsset> FinisherSenderDA;
+
+	UPROPERTY()
+	TObjectPtr<UFinisherDataAsset> TakeDownActionDA;
+
+	UPROPERTY()
+	TObjectPtr<UWvHitReactDataAsset> HitReactionDA;
+
+	UPROPERTY()
+	TObjectPtr<UCharacterVFXDataAsset> CharacterVFXDA;
+
+	TSharedPtr<FStreamableHandle> AsyncLoadStreamer;
+
+#pragma endregion
 };

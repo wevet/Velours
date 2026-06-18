@@ -1,0 +1,40 @@
+// Copyright 2022 wevet works All Rights Reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Ability/WvGameplayAbility.h"
+#include "Task/WvAT_PlayMontageAndWaitForEvent.h"
+#include "Character/BasePawn.h"
+#include "WvAbility_Melee.generated.h"
+
+/**
+ * 
+ */
+UCLASS()
+class VELOURS_API UWvAbility_Melee : public UWvGameplayAbility
+{
+	GENERATED_UCLASS_BODY()
+
+
+protected:
+	virtual bool CanActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayTagContainer* SourceTags = nullptr, const FGameplayTagContainer* TargetTags = nullptr, OUT FGameplayTagContainer* OptionalRelevantTags = nullptr) const override;
+	virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, const FGameplayEventData* TriggerEventData) override;
+	virtual void EndAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo* ActorInfo, const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility, bool bWasCancelled) override;
+
+	UPROPERTY(EditDefaultsOnly)
+	TObjectPtr<class UAnimMontage> Montage{ nullptr };
+
+	UPROPERTY(EditDefaultsOnly)
+	TObjectPtr<class UAnimMontage> SprintToMontage{ nullptr };
+
+	UPROPERTY()
+	FCombatInputData CombatInputData;
+
+private:
+	UFUNCTION()
+	void OnPlayMontageCompleted_Event(FGameplayTag EventTag, FGameplayEventData EventData);
+
+	UPROPERTY()
+	TObjectPtr<class UWvAT_PlayMontageAndWaitForEvent> MontageTask{ nullptr };
+};

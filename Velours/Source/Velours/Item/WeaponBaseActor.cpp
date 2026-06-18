@@ -47,9 +47,9 @@ void AWeaponBaseActor::BeginPlay()
 {
 	Super::BeginPlay();
 
-	if (UWeaponParameterDA)
+	if (IsValid(WeaponParameterDA))
 	{
-		PawnAttackParam = UWeaponParameterDA->Find(WeaponKeyName);
+		PawnAttackParam = WeaponParameterDA->Find(WeaponKeyName);
 		PawnAttackParam.Initialize();
 	}
 }
@@ -98,15 +98,20 @@ void AWeaponBaseActor::Notify_Equip()
 		return;
 	}
 
+	auto GAS = Cast<UWvAbilitySystemComponent>(Character->GetAbilitySystemComponent());
 
-	if (bIsNotifyEquipGAS)
+	if (IsValid(GAS))
 	{
-		//Character->GetWvAbilitySystemComponent()->TryActivateAbilityByTag(EquipGASTag);
-	}
-	else
-	{
-		//Character->GetWvAbilitySystemComponent()->AddGameplayTag(Itemtag, 1);
-		Super::Notify_Equip();
+		if (bIsNotifyEquipGAS)
+		{
+			GAS->TryActivateAbilityByTag(EquipGASTag);
+		}
+		else
+		{
+			GAS->AddGameplayTag(Itemtag, 1);
+			Super::Notify_Equip();
+		}
+
 	}
 }
 
@@ -117,15 +122,22 @@ void AWeaponBaseActor::Notify_UnEquip()
 		return;
 	}
 
-	if (bIsNotifyUnEquipGAS)
+	auto GAS = Cast<UWvAbilitySystemComponent>(Character->GetAbilitySystemComponent());
+
+	if (IsValid(GAS))
 	{
-		//Character->GetWvAbilitySystemComponent()->TryActivateAbilityByTag(UnEquipGASTag);
+		if (bIsNotifyUnEquipGAS)
+		{
+			GAS->TryActivateAbilityByTag(UnEquipGASTag);
+		}
+		else
+		{
+			GAS->RemoveGameplayTag(Itemtag, 1);
+			Super::Notify_UnEquip();
+		}
+
 	}
-	else
-	{
-		//Character->GetWvAbilitySystemComponent()->RemoveGameplayTag(Itemtag, 1);
-		Super::Notify_UnEquip();
-	}
+
 }
 
 

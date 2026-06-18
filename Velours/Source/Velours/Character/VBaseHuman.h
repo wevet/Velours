@@ -7,6 +7,7 @@
 #include "VBaseHuman.generated.h"
 
 class UCapsuleComponent;
+class UWvSkeletalMeshComponent;
 
 /**
  * 
@@ -28,6 +29,10 @@ public:
 	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
 #endif
 
+
+public:
+	virtual class UWvSkeletalMeshComponent* GetWvSkeletalMeshComponent() const override;
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -35,4 +40,7 @@ protected:
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UCapsuleComponent> CapsuleComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<class UWvSkeletalMeshComponent> SkeletalMeshComponent;
 };

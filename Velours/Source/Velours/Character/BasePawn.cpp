@@ -55,11 +55,24 @@
 
 DEFINE_LOG_CATEGORY(LogBaseCharacter)
 
+namespace CharacterDebug
+{
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+
+	TAutoConsoleVariable<int32> CVarDebugCharacterStatus(TEXT("wv.CharacterStatus.Debug"), 0, TEXT("CharacterStatus Debug .\n") TEXT("<=0: off\n") TEXT("  1: on\n"), ECVF_Default);
+	TAutoConsoleVariable<int32> CVarDebugCombatSystem(TEXT("wv.CombatSystem.Debug"), 0, TEXT("CombatSystem Debug .\n") TEXT("<=0: off\n") TEXT("  1: on\n"), ECVF_Default);
+#endif
+}
+
+
 #include UE_INLINE_GENERATED_CPP_BY_NAME(BasePawn)
 
 
 FName ABasePawn::MeshComponentName(TEXT("CharacterMesh0"));
 FName ABasePawn::CapsuleComponentName(TEXT("CollisionCylinder"));
+FName ABasePawn::ClimbSyncPoint = FName(TEXT("ClimbSyncPoint"));
+FName ABasePawn::BackwardInputSyncPoint = FName(TEXT("BackwardInputSyncPoint"));
+
 
 namespace CharacterHelper
 {
@@ -133,6 +146,8 @@ ABasePawn::ABasePawn(const FObjectInitializer& ObjectInitializer) : Super(Object
 void ABasePawn::BeginPlay()
 {
 	Super::BeginPlay();
+
+	RequestAsyncLoad();
 
 }
 
@@ -662,6 +677,11 @@ float ABasePawn::GetHealthToWidget() const
 	return StatusComponent->GetHealthToWidget();
 }
 
+bool ABasePawn::IsHealthHalf() const
+{
+	return StatusComponent->IsHealthHalf();
+}
+
 bool ABasePawn::IsLeader() const
 {
 	if (AbilitySystemComponent)
@@ -671,11 +691,169 @@ bool ABasePawn::IsLeader() const
 	return false;
 }
 
+bool ABasePawn::IsTargetLock() const
+{
+	if (AbilitySystemComponent)
+	{
+		return AbilitySystemComponent->HasMatchingGameplayTag(TAG_Character_TargetLocking);
+	}
+	return false;
+}
+
 bool ABasePawn::IsBotCharacter() const
 {
 	return UWvCommonUtils::IsBot(GetController());
 }
 
+#pragma region NearlestAction
+/// <summary>
+/// call to melee ability
+/// </summary>
+/// <param name="SyncPointWeight"></param>
+void ABasePawn::CalcurateNearlestTarget(const float SyncPointWeight)
+{
+	const auto& LocomotionEssencialVariables = LocomotionComponent->GetLocomotionEssencialVariables();
+	if (LocomotionEssencialVariables.LookAtTarget.IsValid())
+	{
+		FindNearestTarget(LocomotionEssencialVariables.LookAtTarget.Get(), SyncPointWeight);
+	}
+}
+
+void ABasePawn::ResetNearlestTarget()
+{
+	MotionWarpingComponent->RemoveWarpTarget(NEARLEST_TARGET_SYNC_POINT);
+}
+
+void ABasePawn::FindNearestTarget(AActor* Target, const float SyncPointWeight)
+{
+	const FVector To = Target->GetActorLocation();
+	FindNearestTarget(To, SyncPointWeight);
+}
+
+void ABasePawn::FindNearestTarget(const FVector TargetPosition, const float SyncPointWeight)
+{
+	const FVector From = GetActorLocation();
+	const FVector To = TargetPosition;
+	const float Weight = SyncPointWeight;
+	ResetNearlestTarget();
+	const FRotator TargetLookAt = UKismetMathLibrary::FindLookAtRotation(From, To);
+
+	const FRotator Rotation = UKismetMathLibrary::RLerp(GetActorRotation(), TargetLookAt, Weight, true);
+	FMotionWarpingTarget WarpingTarget;
+	WarpingTarget.Name = NEARLEST_TARGET_SYNC_POINT;
+	WarpingTarget.Location = FMath::Lerp(From, To, Weight);
+	WarpingTarget.Rotation = FRotator(0.f, Rotation.Yaw, 0.f);
+	MotionWarpingComponent->AddOrUpdateWarpTarget(WarpingTarget);
+
+}
+
+void ABasePawn::FindNearestTarget(const FAttackMotionWarpingData& AttackMotionWarpingData)
+{
+	auto Target = FindNearestTarget(AttackMotionWarpingData.NearlestDistance, AttackMotionWarpingData.AngleThreshold, false);
+	if (!Target)
+	{
+		UE_LOG(LogBaseCharacter, Warning, TEXT("not found FindNearlestTarget => %s"), *FString(__FUNCTION__));
+		return;
+	}
+
+	FindNearestTarget(Target, AttackMotionWarpingData.TargetSyncPointWeight);
+
+}
+
+const TArray<AActor*> ABasePawn::FindNearestTargets(const float Distance, const float AngleThreshold)
+{
+	// WorldDynamic and Pawn object type
+	static const TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes = { EObjectTypeQuery::ObjectTypeQuery2, EObjectTypeQuery::ObjectTypeQuery3 };
+
+	TArray<AActor*> IgnoreActors;
+	IgnoreActors.Add(this);
+
+	TArray<AActor*> HitTargets;
+	UKismetSystemLibrary::SphereOverlapActors(GetWorld(), GetActorLocation(), Distance, ObjectTypes, ABasePawn::StaticClass(), IgnoreActors, HitTargets);
+
+	// Get the target with the smallest angle difference from the camera forward vector
+	TArray<AActor*> FilterTargets;
+	for (int32 Index = 0; Index < HitTargets.Num(); ++Index)
+	{
+		AActor* Target = HitTargets[Index];
+		if (!IsValid(Target))
+		{
+			continue;
+		}
+
+		const FVector NormalizePos = (Target->GetActorLocation() - GetActorLocation()).GetSafeNormal();
+		const FVector Forward = GetActorForwardVector();
+		const float Angle = UKismetMathLibrary::DegAcos(FVector::DotProduct(Forward, NormalizePos));
+		const bool bIsTargetInView = (FMath::Abs(Angle) < AngleThreshold);
+		if (bIsTargetInView)
+		{
+			FilterTargets.Add(Target);
+
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+			const FVector From = GetActorLocation();
+			const FVector To = Target->GetActorLocation();
+			DrawDebugSphere(GetWorld(), From, 20.f, 12, FColor::Blue, false, 2);
+			DrawDebugSphere(GetWorld(), To, 20.f, 12, FColor::Blue, false, 2);
+			DrawDebugDirectionalArrow(GetWorld(), From, To, 20.f, FColor::Red, false, 2);
+#endif
+
+		}
+	}
+	return FilterTargets;
+}
+
+/// <summary>
+/// Find Target, for example HoldUp. Finisher. KnockOut.
+/// </summary>
+AActor* ABasePawn::FindNearestTarget(const float Distance, const float AngleThreshold, bool bTargetCheckBattled/* = true*/)
+{
+	TArray<AActor*> HitTargets = FindNearestTargets(Distance, AngleThreshold);
+
+	if (HitTargets.Num() <= 0)
+	{
+		return nullptr;
+	}
+
+	HitTargets.RemoveAll([](AActor* Actor)
+		{
+			return Actor == nullptr;
+		});
+
+	// Sort by distance
+	UWvCommonUtils::OrderByDistance(this, HitTargets, true);
+
+
+	// Get the target with the smallest angle difference from the camera forward vector
+	float ClosestDotToCenter = 0.f;
+	ABasePawn* NearlestTarget = nullptr;
+
+	for (int32 Index = 0; Index < HitTargets.Num(); ++Index)
+	{
+		if (ABasePawn* Target = Cast<ABasePawn>(HitTargets[Index]))
+		{
+			if (bTargetCheckBattled && Target->IsInBattled() || Target->IsDead())
+			{
+				continue;
+			}
+
+			const FVector NormalizePos = (Target->GetActorLocation() - GetActorLocation()).GetSafeNormal();
+			const FVector Forward = GetActorForwardVector();
+			const float Dot = FVector::DotProduct(Forward, NormalizePos);
+			if (Dot > ClosestDotToCenter)
+			{
+				ClosestDotToCenter = Dot;
+				NearlestTarget = Target;
+			}
+		}
+	}
+	return NearlestTarget;
+}
+
+
+#pragma endregion
+
+
+#pragma region Vehicle
 void ABasePawn::BeginDrive()
 {
 	UWvAbilitySystemComponent* ASC = RequestAbilitySystemWarmup(EAbilitySystemLoadReason::Interact);
@@ -684,7 +862,8 @@ void ABasePawn::BeginDrive()
 		return;
 	}
 
-
+	GetCombatComponent()->VisibilityCurrentWeapon(true);
+	ASC->AddGameplayTag(TAG_Vehicle_State_Drive, 1);
 }
 
 void ABasePawn::EndDrive()
@@ -694,6 +873,9 @@ void ABasePawn::EndDrive()
 	{
 		return;
 	}
+
+	GetCombatComponent()->VisibilityCurrentWeapon(false);
+	ASC->RemoveGameplayTag(TAG_Vehicle_State_Drive, 1);
 }
 
 bool ABasePawn::IsVehicleDriving() const
@@ -701,6 +883,67 @@ bool ABasePawn::IsVehicleDriving() const
 	const UWvAbilitySystemComponent* ASC = GetWvAbilitySystemComponent();
 	return ASC && ASC->HasMatchingGameplayTag(TAG_Vehicle_State_Drive);
 }
+#pragma endregion
+
+
+/// <summary>
+/// Animation overlay change from chooser table
+/// </summary>
+/// <param name="CurrentOverlay"></param>
+const bool ABasePawn::OverlayStateChange(const ELSOverlayState CurrentOverlay)
+{
+	constexpr uint8 ELSOverlayState_Min = static_cast<uint8>(ELSOverlayState::None);
+	constexpr uint8 ELSOverlayState_Max = static_cast<uint8>(ELSOverlayState::Mass);
+
+
+	uint8 Raw = static_cast<uint8>(CurrentOverlay);
+	Raw = FMath::Clamp(Raw, ELSOverlayState_Min, ELSOverlayState_Max);
+	const ELSOverlayState ClampedOverlay = static_cast<ELSOverlayState>(Raw);
+
+	if (SelectableOverlayState == ClampedOverlay)
+	{
+		return false;
+	}
+
+	bool bIsOverlayChange = false;
+	const ELSOverlayState PrevOverlay = SelectableOverlayState;
+	SelectableOverlayState = ClampedOverlay;
+
+	OverlayChangeDelegate.Broadcast(ClampedOverlay);
+	bIsOverlayChange = true;
+
+#if false
+	if (const UClass* OverlayAnimClass = UWvCommonUtils::FindClassInChooserTable(this, OverlayAnimationTable))
+	{
+		if (OverlayAnimClass->IsChildOf(UAnimInstance::StaticClass()))
+		{
+			TSubclassOf<UAnimInstance> Subclass = const_cast<UClass*>(OverlayAnimClass);
+			GetWvSkeletalMeshComponent()->LinkAnimClassLayers(Subclass);
+			OverlayChangeDelegate.Broadcast(ClampedOverlay);
+			bIsOverlayChange = true;
+		}
+		else
+		{
+			UE_LOG(LogBaseCharacter, Warning, TEXT("OverlayAnimClass not class UAnimInstance: [%s]"), *FString(__FUNCTION__));
+		}
+	}
+	else
+	{
+		const FString CategoryName = *FString::Format(TEXT("{0}"), { *GETENUMSTRING("/Script/Redemption.ELSOverlayState", SelectableOverlayState) });
+		UE_LOG(LogBaseCharacter, Warning, TEXT("OverlayAnimClass not found:[%s] FindClassInChooserTable: [%s]"), *CategoryName, *FString(__FUNCTION__));
+	}
+#endif
+
+
+	if (!bIsOverlayChange)
+	{
+		SelectableOverlayState = PrevOverlay;
+		UE_LOG(LogBaseCharacter, Error, TEXT("Overlay Change Failed, function: [%s]"), *FString(__FUNCTION__));
+	}
+
+	return bIsOverlayChange;
+}
+
 
 void ABasePawn::SetAnimRootMotionTranslationScale(float InAnimRootMotionTranslationScale)
 {
@@ -712,6 +955,57 @@ float ABasePawn::GetAnimRootMotionTranslationScale() const
 	return AnimRootMotionTranslationScale;
 }
 
+/// <summary>
+/// ref to Widget Overlay
+/// </summary>
+FTransform ABasePawn::GetPivotOverlayTansform() const
+{
+	if (!IsValid(GetWvSkeletalMeshComponent()))
+	{
+		return FTransform::Identity;
+	}
+
+	auto RootPos = GetWvSkeletalMeshComponent()->GetSocketLocation(TEXT("root"));
+	auto HeadPos = GetWvSkeletalMeshComponent()->GetSocketLocation(TEXT("head"));
+	TArray<FVector> Points({ RootPos, HeadPos, });
+	auto AveragePoint = UKismetMathLibrary::GetVectorArrayAverage(Points);
+	return FTransform(GetActorRotation(), AveragePoint, FVector::OneVector);
+}
+
+
+#pragma region Shape
+void ABasePawn::SetGenderType(const EGenderType InGenderType)
+{
+	StatusComponent->SetGenderType(InGenderType);
+}
+
+EGenderType ABasePawn::GetGenderType() const
+{
+	return StatusComponent->GetGenderType();
+}
+
+void ABasePawn::SetBodyShapeType(const EBodyShapeType InBodyShapeType)
+{
+	if (IsValid(StatusComponent))
+	{
+		StatusComponent->SetBodyShapeType(InBodyShapeType);
+	}
+}
+
+EBodyShapeType ABasePawn::GetBodyShapeType() const
+{
+	if (IsValid(StatusComponent))
+	{
+		return StatusComponent->GetBodyShapeType();
+	}
+	return EBodyShapeType::Normal;
+}
+
+FCharacterInfo ABasePawn::GetCharacterInfo() const
+{
+	return StatusComponent->GetCharacterInfo();
+}
+#pragma endregion
 
 
 #pragma region Abilities
@@ -954,5 +1248,194 @@ EAbilitySystemLoadReason ABasePawn::GetLastAbilitySystemLoadReason() const
 }
 #pragma endregion
 
+
+#pragma region AsyncLoad
+void ABasePawn::RequestAsyncLoad()
+{
+	OnSyncLoadCompleteHandler();
+
+	FStreamableManager& StreamableManager = UWvGameInstance::GetStreamableManager();
+
+	TArray<FSoftObjectPath> TempPaths;
+	for (TPair<FGameplayTag, TSoftObjectPtr<UDataAsset>>Pair : GameDataAssets)
+	{
+		if (Pair.Value.IsNull())
+		{
+			continue;
+		}
+		TempPaths.Add(Pair.Value.ToSoftObjectPath());
+	}
+
+
+	AsyncLoadStreamer = StreamableManager.RequestAsyncLoad(TempPaths, [this]
+	{
+		this->OnAsyncLoadCompleteHandler();
+	},
+	FStreamableManager::AsyncLoadHighPriority);
+
+	RequestComponentsAsyncLoad();
+}
+
+void ABasePawn::RequestComponentsAsyncLoad()
+{
+	if (!bIsAllowAsyncLoadComponentAssets)
+	{
+		return;
+	}
+
+	/*
+	* InventoryComponent
+	* ClimbingComponent
+	* LadderComponent
+	* WvCharacterMovementComponent
+	* QTEActionComponent (player only)
+	*/
+
+	auto Components = Game::ComponentExtension::GetComponentsArray<UActorComponent>(this);
+	for (UActorComponent* ActComp : Components)
+	{
+		if (IAsyncComponentInterface* Interface = Cast<IAsyncComponentInterface>(ActComp))
+		{
+			Interface->RequestAsyncLoad();
+		}
+	}
+}
+
+void ABasePawn::OnAsyncLoadCompleteHandler()
+{
+	TakeDownActionDA = OnAsyncLoadDataAsset<UFinisherDataAsset>(TAG_Game_Asset_FinisherReceiver);
+	CloseCombatDA = OnAsyncLoadDataAsset<UCloseCombatAnimationDataAsset>(TAG_Game_Asset_CloseCombat);
+	HitReactionDA = OnAsyncLoadDataAsset<UWvHitReactDataAsset>(TAG_Game_Asset_HitReaction);
+
+	// player only load
+	CharacterVFXDA = OnAsyncLoadDataAsset<UCharacterVFXDataAsset>(TAG_Game_Asset_CharacterVFX);
+
+
+	if (AsyncLoadStreamer.IsValid() && AsyncLoadStreamer->IsActive())
+	{
+		AsyncLoadStreamer->CancelHandle();
+	}
+
+	AsyncLoadStreamer.Reset();
+	AsyncLoadCompleteDelegate.Broadcast();
+}
+
+void ABasePawn::OnSyncLoadCompleteHandler()
+{
+
+}
+
+template<typename T>
+T* ABasePawn::OnAsyncLoadDataAsset(const FGameplayTag Tag)
+{
+	if (auto SoftPtr = GameDataAssets.Find(Tag))
+	{
+		if (!SoftPtr->IsValid())
+		{
+			UE_LOG(LogBaseCharacter, Warning, TEXT("DataAsset for tag %s not yet loaded."), *Tag.ToString());
+			return nullptr;
+		}
+
+		UObject* Obj = (*SoftPtr).Get();
+		if (!IsValid(Obj))
+		{
+			UE_LOG(LogBaseCharacter, Error, TEXT("Loaded asset is invalid for tag %s."), *Tag.ToString());
+			return nullptr;
+		}
+
+		T* DataAsset = Cast<T>(Obj);
+		if (!DataAsset)
+		{
+			UE_LOG(LogBaseCharacter, Error, TEXT("Failed to cast DataAsset for tag %s to desired type."), *Tag.ToString());
+		}
+		return DataAsset;
+	}
+	return nullptr;
+
+}
+
+template<typename T>
+T* ABasePawn::OnSyncLoadDataAsset(const FGameplayTag Tag)
+{
+	T* DataAsset = nullptr;
+
+	if (auto Ptr = GameDataAssets.Find(Tag))
+	{
+		auto Obj = UKismetSystemLibrary::LoadAsset_Blocking(Ptr);
+		DataAsset = Cast<T>(Obj);
+	}
+
+	if (IsValid(DataAsset))
+	{
+		UE_LOG(LogBaseCharacter, Warning, TEXT("%s Asset Load Complete %s => [%s]"), *GetNameSafe(this), *GetNameSafe(DataAsset), *FString(__FUNCTION__));
+	}
+	else
+	{
+		UE_LOG(LogBaseCharacter, Error, TEXT("%s Asset Load Fail %s => [%s]"), *GetNameSafe(this), *GetNameSafe(DataAsset), *FString(__FUNCTION__));
+	}
+
+	return DataAsset;
+}
+#pragma endregion
+
+
+#pragma region CloseCombat
+int32 ABasePawn::GetCombatAnimationIndex() const
+{
+	if (IsValid(CloseCombatDA))
+	{
+		auto BodyShape = GetBodyShapeType();
+		return CloseCombatDA->GetCombatAnimationIndex(BodyShape);
+	}
+	return INDEX_NONE;
+}
+
+int32 ABasePawn::CloseCombatMaxComboCount(const int32 Index) const
+{
+	if (IsValid(CloseCombatDA))
+	{
+		auto BodyShape = GetBodyShapeType();
+		return CloseCombatDA->CloseCombatMaxComboCount(BodyShape, Index);
+	}
+	return INDEX_NONE;
+}
+
+UAnimMontage* ABasePawn::GetCloseCombatAnimMontage(const int32 Index, const FGameplayTag Tag) const
+{
+	if (IsValid(CloseCombatDA))
+	{
+		auto BodyShape = GetBodyShapeType();
+		return CloseCombatDA->GetAnimMontage(BodyShape, Index, Tag);
+	}
+	return nullptr;
+}
+
+float ABasePawn::CalcurateBodyShapePlayRate() const
+{
+	if (IsValid(CloseCombatDA))
+	{
+		auto BodyShape = GetBodyShapeType();
+		return CloseCombatDA->CalcurateBodyShapePlayRate(BodyShape);
+	}
+	return 1.0f;
+}
+
+void ABasePawn::CalculateBackwardInputRotation()
+{
+	MotionWarpingComponent->RemoveWarpTarget(ABasePawn::BackwardInputSyncPoint);
+
+	const auto& LocomotionEssencialVariables = LocomotionComponent->GetLocomotionEssencialVariables();
+
+	const FVector Input = LocomotionEssencialVariables.MovementInput;
+	const FRotator TargetRotation = FRotationMatrix::MakeFromX(Input).Rotator();
+
+
+	MotionWarpingComponent->AddOrUpdateWarpTargetFromLocationAndRotation(
+		ABasePawn::BackwardInputSyncPoint,
+		FVector::ZeroVector,
+		TargetRotation);
+
+}
+#pragma endregion
 
 
