@@ -85,7 +85,7 @@ Platforms/Windows/*
 
 # temp start
 # temp end
-
+*.slnx
 
 .vsconfig
 
