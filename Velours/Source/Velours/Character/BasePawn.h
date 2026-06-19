@@ -319,6 +319,8 @@ public:
 	float CalcurateBodyShapePlayRate() const;
 	void CalculateBackwardInputRotation();
 
+	UFUNCTION(BlueprintCallable)
+	void UpdateTargetableActorList(AActor* NewActor, const bool bIsAdd);
 
 #pragma region AsyncLoad
 	virtual void RequestAsyncLoad();
@@ -389,7 +391,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "BaseCharacter|Config")
 	FFinisherConfig FinisherConfig;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Character|Overlay")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "BaseCharacter|Config")
 	ELSOverlayState SelectableOverlayState;
 
 #pragma region DA
@@ -407,6 +409,8 @@ protected:
 #pragma endregion
 
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "BaseCharacter|Config")
+	TArray<AActor*> TargetableActorList;
 
 protected:
 	UFUNCTION()

@@ -499,7 +499,14 @@ void AWvPlayerController::EndQTE()
 	}
 }
 
+void AWvPlayerController::SetOverlayMenuOpen(const bool bIsNewOverlayMenuOpen)
+{
+	bIsOverlayMenuOpen = bIsNewOverlayMenuOpen;
+}
 
-
+bool AWvPlayerController::GetOverlayMenuOpen() const
+{
+	return bIsOverlayMenuOpen; 
+}
 
 

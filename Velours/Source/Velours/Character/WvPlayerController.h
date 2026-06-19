@@ -113,18 +113,29 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UMissionComponent> MissionComponent;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PlayerController|Config")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PlayerController|Config")
 	int32 OverrideSquadID = 1;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PlayerController|Config")
+	UFUNCTION(BlueprintCallable)
+	void SetOverlayMenuOpen(const bool bIsNewOverlayMenuOpen);
+
+	UFUNCTION(BlueprintCallable)
+	bool GetOverlayMenuOpen() const;
+
+protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "PlayerController|Config")
 	TSoftClassPtr<class UUMGManager> UMGManagerTemplate;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PlayerController|Config")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "PlayerController|Config")
 	TSoftClassPtr<class UVehicleUIController> VehicleUIControllerTemplate;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "PlayerController|Config")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "PlayerController|Config")
 	TSoftClassPtr<class AMinimapCaptureActor> MinimapCaptureActorTemplate;
 
+	UPROPERTY()
+	bool bIsOverlayMenuOpen{false};
+
+protected:
 	UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "Vehicle")
 	void BP_DefaultPossess(APawn* InPawn);
 

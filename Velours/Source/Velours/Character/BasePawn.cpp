@@ -1439,3 +1439,22 @@ void ABasePawn::CalculateBackwardInputRotation()
 #pragma endregion
 
 
+void ABasePawn::UpdateTargetableActorList(AActor* NewActor, const bool bIsAdd)
+{
+	if (bIsAdd)
+	{
+		if (!TargetableActorList.Contains(NewActor))
+		{
+			TargetableActorList.Add(NewActor);
+		}
+	}
+	else
+	{
+		if (TargetableActorList.Contains(NewActor))
+		{
+			TargetableActorList.Remove(NewActor);
+		}
+	}
+}
+
+
