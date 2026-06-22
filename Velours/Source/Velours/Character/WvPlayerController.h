@@ -106,6 +106,14 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FInputEventGameplayTagExtendDelegate InputEventGameplayTagExtendDelegate_All;
 
+public:
+	UFUNCTION(BlueprintCallable, Category = "PlayerController|UI")
+	void SetOverlayMenuOpen(const bool bIsNewOverlayMenuOpen);
+
+	UFUNCTION(BlueprintCallable, Category = "PlayerController|UI")
+	bool GetOverlayMenuOpen() const;
+
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Component, meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<class UWvInputEventComponent> WvInputEventComponent;
@@ -116,11 +124,6 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "PlayerController|Config")
 	int32 OverrideSquadID = 1;
 
-	UFUNCTION(BlueprintCallable)
-	void SetOverlayMenuOpen(const bool bIsNewOverlayMenuOpen);
-
-	UFUNCTION(BlueprintCallable)
-	bool GetOverlayMenuOpen() const;
 
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "PlayerController|Config")

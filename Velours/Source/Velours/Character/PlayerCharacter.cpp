@@ -36,6 +36,9 @@
 APlayerCharacter::APlayerCharacter(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
 {
 
+	MyTeamID = FGenericTeamId(1);
+	CharacterTag = FGameplayTag::RequestGameplayTag(TAG_Character_Player.GetTag().GetTagName());
+
 	QTEActionComponent = CreateDefaultSubobject<UQTEActionComponent>(TEXT("QTEActionComponent"));
 	QTEActionComponent->bAutoActivate = 1;
 
@@ -177,6 +180,8 @@ void APlayerCharacter::TryNotifyControllerAbilitySystemInitialized()
 	{
 		UE_LOG(LogBaseCharacter, Log, TEXT("[%s] : Success CtrlName => %s"), *FString(__FUNCTION__), *GetNameSafe(PC));
 		PC->PostAbilitySystemInitialize(AbilitySystemComponent);
+
+		P_Controller = PC;
 	}
 	else
 	{
@@ -187,6 +192,16 @@ void APlayerCharacter::TryNotifyControllerAbilitySystemInitialized()
 	}
 
 }
+
+bool APlayerCharacter::GetOverlayMenuOpen() const
+{
+	if (IsValid(P_Controller))
+	{
+		return P_Controller->GetOverlayMenuOpen();
+	}
+	return false;
+}
+
 
 #pragma region IWvKeyableTargetInterface
 void APlayerCharacter::SetKeyInputEnable()

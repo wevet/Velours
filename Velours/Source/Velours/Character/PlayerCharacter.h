@@ -68,6 +68,10 @@ public:
 
 	void NotifyRegisterMission(const int32 MissionIndex);
 
+	UFUNCTION(BlueprintCallable, Category="Player|UI")
+	bool GetOverlayMenuOpen() const;
+
+
 protected:
 	virtual void PostAbilitySystemInitialize() override;
 
@@ -121,5 +125,8 @@ private:
 
 	UFUNCTION()
 	void OnQTEEnd_Callback(const bool bIsSuccess);
+
+	UPROPERTY(Transient)
+	TObjectPtr<AWvPlayerController> P_Controller{ nullptr };
 
 };
