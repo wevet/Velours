@@ -2,17 +2,17 @@
 
 
 #include "WvAnimNotifyState_ComboEnable.h"
-//#include "Character/WvPlayerController.h"
+#include "Character/WvPlayerController.h"
 //#include "Character/WvAIController.h"
 #include "Component/WvInputEventComponent.h"
 #include "Component/InventoryComponent.h"
-//#include "Locomotion/LocomotionComponent.h"
+#include "Component/LocomotionComponent.h"
 #include "Item/WeaponBaseActor.h"
 #include "Velours.h"
 
 #include "GameplayTagContainer.h"
 #include "Abilities/GameplayAbility.h"
-//#include "WvAbilitySystemTypes.h"
+#include "WvAbilitySystemTypes.h"
 
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(WvAnimNotifyState_ComboEnable)
@@ -62,7 +62,6 @@ void UWvAnimNotifyState_ComboEnable::AbilityNotifyBegin(USkeletalMeshComponent* 
 	WaitReleaseTask->OnHoldingCallback.AddUniqueDynamic(this, &ThisClass::OnHolding);
 	WaitReleaseTask->ReadyForActivation();
 
-#if false
 	if (AWvPlayerController* PC = Cast<AWvPlayerController>(AbilitySystemComponent->GetAvatarController()))
 	{
 		if (PC->IsLocalPlayerController())
@@ -74,6 +73,8 @@ void UWvAnimNotifyState_ComboEnable::AbilityNotifyBegin(USkeletalMeshComponent* 
 			}
 		}
 	}
+
+#if false
 
 	if (AWvAIController* AIC = Cast<AWvAIController>(AbilitySystemComponent->GetAvatarController()))
 	{

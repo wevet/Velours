@@ -38,6 +38,10 @@
 		{
 			"Name": "EngineCameras",
 			"Enabled": true
+		},
+		{
+			"Name": "GameplayStateTree",
+			"Enabled": true
 		}
 	]
 }

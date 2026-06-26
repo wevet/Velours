@@ -73,11 +73,14 @@ DerivedDataCache/*
 
 
 
-# pcg tools
+# other tools
 Content/PCC_Icons/*
 Content/ProceduralBuildingGenerator/*
 Content/ProceduralCityCreator/*
 Content/UltraDynamicSky/*
+
+# ignore developer
+Content/Developers/*
 
 # ignore cooked
 Platforms/Windows/*

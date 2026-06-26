@@ -6,6 +6,10 @@
 #include "Character/BasePawn.h"
 #include "Animation/AnimInstance.h"
 
+#include "DefaultMovementSet/CharacterMoverComponent.h"
+#include "MoverComponent.h"
+#include "Components/SkeletalMeshComponent.h"
+
 #include UE_INLINE_GENERATED_CPP_BY_NAME(WvAT_PlayMontageAndWaitForEvent)
 
 
@@ -68,17 +72,17 @@ void UWvAT_PlayMontageAndWaitForEvent::OnMontageBlendedIn(UAnimMontage* Montage)
 
 void UWvAT_PlayMontageAndWaitForEvent::OnAbilityCancelled()
 {
-	// TODO: Merge this fix back to engine, it was calling the wrong callback
-	if (StopPlayingMontage())
+	StopPlayingMontage();
+	ClearCurrentMoverMontageAbility();
+
+	if (ShouldBroadcastAbilityTaskDelegates())
 	{
-		// Let the BP handle the interrupt as well
-		if (ShouldBroadcastAbilityTaskDelegates())
-		{
-			FGameplayEventData Payload;
-			Payload.OptionalObject = MontageToPlay;
-			OnCancelled.Broadcast(FGameplayTag(), Payload);
-		}
+		FGameplayEventData Payload;
+		Payload.OptionalObject = MontageToPlay;
+		OnCancelled.Broadcast(FGameplayTag(), Payload);
 	}
+
+	EndTask();
 }
 
 
@@ -139,82 +143,81 @@ UWvAT_PlayMontageAndWaitForEvent* UWvAT_PlayMontageAndWaitForEvent::PlayMontageA
 }
 
 
+
 void UWvAT_PlayMontageAndWaitForEvent::Activate()
 {
-	if (!IsValid(Ability))
+	if (!IsValid(Ability) || !MontageToPlay)
 	{
+		OnAbilityCancelled();
 		return;
 	}
 
-	bool bPlayedMontage = false;
+	AActor* AvatarActor = GetAvatarActor();
+	if (!AvatarActor)
+	{
+		OnAbilityCancelled();
+		return;
+	}
+
+	UMoverComponent* MoverComponent = AvatarActor ? AvatarActor->FindComponentByClass<UMoverComponent>() : nullptr;
+
+	if (!MoverComponent)
+	{
+		ABILITY_LOG(Warning, TEXT("MoverComponent not found."));
+		OnAbilityCancelled();
+		return;
+	}
+
 	UWvAbilitySystemComponent* ASC = GetTargetAbilitySystemComponent();
-
-	if (ASC)
+	if (!ASC)
 	{
-		float PlayRate = Rate;
-		const FGameplayAbilityActorInfo* ActorInfo = Ability->GetCurrentActorInfo();
-		UAnimInstance* AnimInstance = ActorInfo->GetAnimInstance();
-		if (IsValid(AnimInstance))
-		{
-			// Bind to event callback
-			EventHandle = ASC->AddGameplayEventTagContainerDelegate(EventTags, FGameplayEventTagMulticastDelegate::FDelegate::CreateUObject(this, &UWvAT_PlayMontageAndWaitForEvent::OnGameplayEvent));
-
-			const float Result = ASC->PlayMontage(Ability, Ability->GetCurrentActivationInfo(), MontageToPlay, PlayRate, StartSection, StartTimeSeconds);
-			if (Result > 0.0f)
-			{
-				// Playing a montage could potentially fire off a callback into game code which could kill this ability! Early out if we are  pending kill.
-				if (!ShouldBroadcastAbilityTaskDelegates())
-				{
-					return;
-				}
-
-				CancelledHandle = Ability->OnGameplayAbilityCancelled.AddUObject(this, &UWvAT_PlayMontageAndWaitForEvent::OnAbilityCancelled);
-
-				BlendingOutDelegate.BindUObject(this, &UWvAT_PlayMontageAndWaitForEvent::OnMontageBlendingOut);
-				AnimInstance->Montage_SetBlendingOutDelegate(BlendingOutDelegate, MontageToPlay);
-
-				BlendedingInDelegate.BindUObject(this, &UWvAT_PlayMontageAndWaitForEvent::OnMontageBlendedIn);
-				AnimInstance->Montage_SetBlendedInDelegate(BlendedingInDelegate, MontageToPlay);
-
-				MontageEndedDelegate.BindUObject(this, &UWvAT_PlayMontageAndWaitForEvent::OnMontageEnded);
-				AnimInstance->Montage_SetEndDelegate(MontageEndedDelegate, MontageToPlay);
-
-				ABasePawn* Character = Cast<ABasePawn>(GetAvatarActor());
-
-				if (Character && (Character->GetLocalRole() == ROLE_Authority || (Character->GetLocalRole() == ROLE_AutonomousProxy && Ability->GetNetExecutionPolicy() == EGameplayAbilityNetExecutionPolicy::LocalPredicted)))
-				{
-					Character->SetAnimRootMotionTranslationScale(AnimRootMotionTranslationScale);
-				}
-
-				bPlayedMontage = true;
-				ASC->AbilityMontageBeginDelegate.Broadcast(Ability, MontageToPlay);
-
-				// update starting position
-				AnimInstance->Montage_SetPosition(MontageToPlay, StartingPosition);
-			}
-		}
-		else
-		{
-			ABILITY_LOG(Warning, TEXT("UWvAT_PlayMontageAndWaitForEvent call to PlayMontage failed!"));
-		}
-	}
-	else
-	{
-		ABILITY_LOG(Warning, TEXT("UWvAT_PlayMontageAndWaitForEvent called on invalid AbilitySystemComponent"));
+		ABILITY_LOG(Warning, TEXT("Invalid AbilitySystemComponent."));
+		OnAbilityCancelled();
+		return;
 	}
 
-	if (!bPlayedMontage)
+	const FGameplayAbilityActorInfo* ActorInfo = Ability->GetCurrentActorInfo();
+	UAnimInstance* AnimInstance = ActorInfo->GetAnimInstance();
+
+	// Bind to event callback
+	EventHandle = ASC->AddGameplayEventTagContainerDelegate(EventTags, FGameplayEventTagMulticastDelegate::FDelegate::CreateUObject(this, &UWvAT_PlayMontageAndWaitForEvent::OnGameplayEvent));
+
+	float PlayRate = Rate;
+	//const float Result = ASC->PlayMontage(Ability, Ability->GetCurrentActivationInfo(), MontageToPlay, PlayRate, StartSection, StartTimeSeconds);
+	MoverMontageProxy = UPlayMoverMontageCallbackProxy::CreateProxyObjectForPlayMoverMontage(
+		MoverComponent,
+		MontageToPlay,
+		PlayRate,
+		StartingPosition,
+		StartSection);
+
+	if (!MoverMontageProxy)
 	{
-		ABILITY_LOG(Warning, TEXT("UWvAT_PlayMontageAndWaitForEvent called in Ability %s failed to play montage %s; Task Instance Name %s."), *Ability->GetName(), *GetNameSafe(MontageToPlay), *InstanceName.ToString());
-		if (ShouldBroadcastAbilityTaskDelegates())
-		{
-			FGameplayEventData Payload;
-			Payload.OptionalObject = MontageToPlay;
-			OnCancelled.Broadcast(FGameplayTag(), Payload);
-		}
+		ABILITY_LOG(Warning, TEXT("Failed to create PlayMoverMontageCallbackProxy."));
+		OnAbilityCancelled();
+		return;
 	}
+
+	ASC->SetCurrentMoverMontageAbility(Ability, MontageToPlay);
+
+	CancelledHandle = Ability->OnGameplayAbilityCancelled.AddUObject(this, &UWvAT_PlayMontageAndWaitForEvent::OnAbilityCancelled);
+
+	MoverMontageProxy->OnCompleted.AddDynamic(this, &UWvAT_PlayMontageAndWaitForEvent::OnMoverMontageCompleted);
+	MoverMontageProxy->OnBlendOut.AddDynamic(this, &UWvAT_PlayMontageAndWaitForEvent::OnMoverMontageBlendOut);
+	MoverMontageProxy->OnInterrupted.AddDynamic(this, &UWvAT_PlayMontageAndWaitForEvent::OnMoverMontageInterrupted);
+	//MoverMontageProxy->OnCancelled.AddDynamic(this, &UWvAT_PlayMontageAndWaitForEvent::OnMoverMontageCancelled);
+
+	ASC->AbilityMontageBeginDelegate.Broadcast(Ability, MontageToPlay);
 
 	SetWaitingOnAvatar();
+}
+
+void UWvAT_PlayMontageAndWaitForEvent::ClearCurrentMoverMontageAbility()
+{
+	if (UWvAbilitySystemComponent* ASC = GetTargetAbilitySystemComponent())
+	{
+		ASC->ClearCurrentMoverMontageAbility(Ability, MontageToPlay);
+	}
 }
 
 void UWvAT_PlayMontageAndWaitForEvent::ExternalCancel()
@@ -249,41 +252,27 @@ void UWvAT_PlayMontageAndWaitForEvent::OnDestroy(bool AbilityEnded)
 
 bool UWvAT_PlayMontageAndWaitForEvent::StopPlayingMontage()
 {
-	const FGameplayAbilityActorInfo* ActorInfo = Ability->GetCurrentActorInfo();
+	const FGameplayAbilityActorInfo* ActorInfo = Ability ? Ability->GetCurrentActorInfo() : nullptr;
 	if (!ActorInfo)
 	{
 		return false;
 	}
 
 	UAnimInstance* AnimInstance = ActorInfo->GetAnimInstance();
-	if (AnimInstance == nullptr)
+	if (!AnimInstance || !MontageToPlay)
 	{
 		return false;
 	}
 
-	// Check if the montage is still playing
-	// The ability would have been interrupted, in which case we should automatically stop the montage
-	if (AbilitySystemComponent.IsValid() && Ability)
+	if (!AnimInstance->Montage_IsPlaying(MontageToPlay))
 	{
-		if (AbilitySystemComponent->GetAnimatingAbility() == Ability &&
-			AbilitySystemComponent->GetCurrentMontage() == MontageToPlay)
-		{
-			// Unbind delegates so they don't get called as well
-			FAnimMontageInstance* MontageInstance = AnimInstance->GetActiveInstanceForMontage(MontageToPlay);
-			if (MontageInstance)
-			{
-				MontageInstance->OnMontageBlendedInEnded.Unbind();
-				MontageInstance->OnMontageBlendingOutStarted.Unbind();
-				MontageInstance->OnMontageEnded.Unbind();
-			}
-
-			AbilitySystemComponent->CurrentMontageStop();
-			return true;
-		}
+		return false;
 	}
 
-	return false;
+	AnimInstance->Montage_Stop(MontageToPlay->BlendOut.GetBlendTime(), MontageToPlay);
+	return true;
 }
+
 
 FString UWvAT_PlayMontageAndWaitForEvent::GetDebugString() const
 {
@@ -306,6 +295,53 @@ FString UWvAT_PlayMontageAndWaitForEvent::GetDebugString() const
 		}
 	}
 	return FString::Printf(TEXT("PlayMontageAndWaitForEvent. MontageToPlay: %s  (Currently Playing): %s"), *GetNameSafe(MontageToPlay), *GetNameSafe(PlayingMontage));
+}
+
+
+void UWvAT_PlayMontageAndWaitForEvent::OnMoverMontageCompleted(FName NotifyName)
+{
+	ClearCurrentMoverMontageAbility();
+
+	if (ShouldBroadcastAbilityTaskDelegates())
+	{
+		OnCompleted.Broadcast(FGameplayTag(), FGameplayEventData());
+	}
+
+	EndTask();
+}
+
+void UWvAT_PlayMontageAndWaitForEvent::OnMoverMontageBlendOut(FName NotifyName)
+{
+	if (ShouldBroadcastAbilityTaskDelegates())
+	{
+		OnBlendOut.Broadcast(FGameplayTag(), FGameplayEventData());
+	}
+}
+
+void UWvAT_PlayMontageAndWaitForEvent::OnMoverMontageInterrupted(FName NotifyName)
+{
+	ClearCurrentMoverMontageAbility();
+
+	if (ShouldBroadcastAbilityTaskDelegates())
+	{
+		OnInterrupted.Broadcast(FGameplayTag(), FGameplayEventData());
+	}
+
+	EndTask();
+}
+
+void UWvAT_PlayMontageAndWaitForEvent::OnMoverMontageCancelled(FName NotifyName)
+{
+	ClearCurrentMoverMontageAbility();
+
+	if (ShouldBroadcastAbilityTaskDelegates())
+	{
+		FGameplayEventData Payload;
+		Payload.OptionalObject = MontageToPlay;
+		OnCancelled.Broadcast(FGameplayTag(), Payload);
+	}
+
+	EndTask();
 }
 
 

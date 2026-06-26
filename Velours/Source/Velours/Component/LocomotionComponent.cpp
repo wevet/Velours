@@ -13,6 +13,14 @@
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(LocomotionComponent)
 
+
+FGameplayTag ULocomotionStateDataAsset::FindMovementModeTag(const FName& MovementModeName) const
+{
+	return MovementModeTagMap.FindRef(MovementModeName);
+}
+
+
+
 ULocomotionComponent::ULocomotionComponent()
 {
 	PrimaryComponentTick.bCanEverTick = true;
@@ -122,3 +130,17 @@ FVector ULocomotionComponent::ChooseTargetPosition() const
 	return LocomotionEssencialVariables.LookAtTarget.IsValid() ? LocomotionEssencialVariables.LookAtTarget->GetActorLocation() : FVector::ZeroVector;
 }
 
+void ULocomotionComponent::OnMovementModeChanged(const FName& PreviousModeName, const FName& NewModeName,
+	FGameplayTag& OutPrevMovementModeTag, FGameplayTag& OutNextMovementModeTag)
+{
+
+	if (LocomotionStateDA)
+	{
+		OutPrevMovementModeTag = LocomotionStateDA->FindMovementModeTag(PreviousModeName);
+		OutNextMovementModeTag = LocomotionStateDA->FindMovementModeTag(NewModeName);
+
+		UE_LOG(LogBaseCharacter, Log, TEXT("[%s] : PreviousModeName => %s, NewModeName => %s"), *FString(__FUNCTION__), *PreviousModeName.ToString(),
+			*NewModeName.ToString());
+
+	}
+}

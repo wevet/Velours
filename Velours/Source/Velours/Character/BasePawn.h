@@ -41,6 +41,7 @@ class UWvRelationshipComponent;
 class UMinimapMarkerComponent;
 class UChooserTable;
 class UBehaviorTree;
+class UCharacterMoverComponent;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogBaseCharacter, All, All)
 
@@ -424,6 +425,9 @@ protected:
 
 	UFUNCTION()
 	void OnAbilityFailed_Callback(const UGameplayAbility* Ability, const FGameplayTagContainer& GameplayTags);
+
+	UFUNCTION()
+	void OnMovementModeChanged_Callback(const FName& PreviousModeName, const FName& NewModeName);
 
 
 	void SetAbilitySystemLoadState(EAbilitySystemLoadState NewState, EAbilitySystemLoadReason Reason);

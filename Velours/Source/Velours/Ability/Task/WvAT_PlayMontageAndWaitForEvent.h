@@ -7,6 +7,7 @@
 #include "GameplayTagContainer.h"
 #include "Abilities/GameplayAbilityTypes.h"
 #include "Animation/AnimMontage.h"
+#include "MoveLibrary/PlayMoverMontageCallbackProxy.h"
 #include "WvAT_PlayMontageAndWaitForEvent.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FPlayMontageAndWaitForEventDelegate, FGameplayTag, EventTag, FGameplayEventData, EventData);
@@ -94,6 +95,21 @@ public:
 	UPROPERTY()
 	bool bStopWhenAbilityEnds{ true };
 
+	UPROPERTY()
+	TObjectPtr<UPlayMoverMontageCallbackProxy> MoverMontageProxy;
+
+	UFUNCTION()
+	void OnMoverMontageCompleted(FName NotifyName);
+
+	UFUNCTION()
+	void OnMoverMontageBlendOut(FName NotifyName);
+
+	UFUNCTION()
+	void OnMoverMontageInterrupted(FName NotifyName);
+
+	UFUNCTION()
+	void OnMoverMontageCancelled(FName NotifyName);
+
 private:
 	/** Checks if the ability is playing a montage and stops that montage, returns true if a montage was stopped, false if not. */
 	bool StopPlayingMontage();
@@ -105,6 +121,8 @@ private:
 	void OnMontageBlendingOut(UAnimMontage* Montage, bool bInterrupted);
 	void OnMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 	void OnGameplayEvent(FGameplayTag EventTag, const FGameplayEventData* Payload);
+
+	void ClearCurrentMoverMontageAbility();
 
 	void OnAbilityCancelled();
 

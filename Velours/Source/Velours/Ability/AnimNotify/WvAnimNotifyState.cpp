@@ -25,16 +25,26 @@ void UWvAnimNotifyState::NotifyBegin(USkeletalMeshComponent* MeshComp, UAnimSequ
 		if (AbilitySystemComponent)
 		{
 			Ability = Cast<UWvAbilityBase>(AbilitySystemComponent->GetAnimatingAbility());
-			if (IsValid(Ability))
+
+			// Mover Montage path fallback
+			if (!IsValid(Ability))
 			{
-				if (Ability->IsActive())
-				{
-					AbilitySystemComponent->AbilityNotifyBegin(this);
-				}
+				Ability = Cast<UWvAbilityBase>(AbilitySystemComponent->GetCurrentMoverMontageAbility());
+			}
+
+
+			if (IsValid(Ability) && Ability->IsActive())
+			{
+				AbilitySystemComponent->AbilityNotifyBegin(this);
 			}
 			else
 			{
-				UE_LOG(LogTemp, Error, TEXT("not valid GetAnimatingAbility %s"), *FString(__FUNCTION__));
+				UE_LOG(
+					LogTemp,
+					Error,
+					TEXT("not valid AnimatingAbility or CurrentMoverMontageAbility %s"),
+					*FString(__FUNCTION__));
+
 			}
 		}
 	}

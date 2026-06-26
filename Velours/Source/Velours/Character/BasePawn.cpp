@@ -165,6 +165,14 @@ void ABasePawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	//FTimerManager& TM = GetWorld()->GetTimerManager();
 	//TM.ClearTimer(Ragdoll_TimerHandle);
 
+	UCharacterMoverComponent* CharacterMover = FindComponentByClass<UCharacterMoverComponent>();
+
+	if (CharacterMover)
+	{
+		CharacterMover->OnMovementModeChanged.RemoveDynamic(this, &ABasePawn::OnMovementModeChanged_Callback);
+	}
+
+
 	if (IsValid(AbilitySystemComponent))
 	{
 		AbilitySystemComponent->AbilityFailedCallbacks.Remove(AbilityFailedDelegateHandle);
@@ -199,6 +207,10 @@ void ABasePawn::PostInitializeComponents()
 		UE_LOG(LogBaseCharacter, Warning, TEXT("[%s] Created MovementMixer for %s"), *GetName(), *CharacterMover->GetName());
 	}
 
+	if (CharacterMover)
+	{
+		CharacterMover->OnMovementModeChanged.AddUniqueDynamic(this, &ABasePawn::OnMovementModeChanged_Callback);
+	}
 
 	if (HasAuthority() && AbilitySystemCreationPolicy == EAbilitySystemCreationPolicy::Always)
 	{
@@ -1222,6 +1234,30 @@ void ABasePawn::OnRep_AbilitySystemLoadState(EAbilitySystemLoadState OldState)
 
 void ABasePawn::OnAbilityFailed_Callback(const UGameplayAbility* Ability, const FGameplayTagContainer& GameplayTags)
 {
+}
+
+void ABasePawn::OnMovementModeChanged_Callback(const FName& PreviousModeName, const FName& NewModeName)
+{
+	if (LocomotionComponent)
+	{
+		FGameplayTag PrevMovementModeTag = FGameplayTag::EmptyTag;
+		FGameplayTag NextMovementModeTag = FGameplayTag::EmptyTag;
+		LocomotionComponent->OnMovementModeChanged(PreviousModeName, NewModeName, PrevMovementModeTag, NextMovementModeTag);
+
+
+		if (AbilitySystemComponent)
+		{
+			if (AbilitySystemComponent->HasMatchingGameplayTag(PrevMovementModeTag) && PrevMovementModeTag.IsValid())
+			{
+				AbilitySystemComponent->RemoveGameplayTag(PrevMovementModeTag);
+			}
+
+			if (NextMovementModeTag.IsValid())
+			{
+				AbilitySystemComponent->AddGameplayTag(NextMovementModeTag);
+			}
+		}
+	}
 }
 
 void ABasePawn::RequestAbilitySystemCooldown(EAbilitySystemLoadReason Reason)

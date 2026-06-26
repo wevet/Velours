@@ -5,12 +5,35 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Character/CharacterSystemTypes.h"
+#include "GameplayTagContainer.h"
+#include "Engine/DataAsset.h"
 #include "LocomotionComponent.generated.h"
 
 class UHitTargetComponent;
 class ABasePawn;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FLocomotionOverlayChangeDelegate, const ELSOverlayState, PrevOverlay, const ELSOverlayState, CurrentOverlay);
+
+
+UCLASS(BlueprintType)
+class VELOURS_API ULocomotionStateDataAsset : public UDataAsset
+{
+	GENERATED_BODY()
+
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TMap<FName, FGameplayTag> MovementModeTagMap;
+
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FGameplayTag AimingTag;
+
+public:
+	FGameplayTag FindMovementModeTag(const FName& MovementModeName) const;
+};
+
+
 
 UCLASS( ClassGroup=(Movement), meta=(BlueprintSpawnableComponent) )
 class VELOURS_API ULocomotionComponent : public UActorComponent
@@ -54,9 +77,14 @@ public:
 
 	const FLocomotionEssencialVariables& GetLocomotionEssencialVariables() { return LocomotionEssencialVariables; }
 
+	void OnMovementModeChanged(const FName& PreviousModeName, const FName& NewModeName, FGameplayTag& OutPrevMovementModeTag, FGameplayTag& OutNextMovementModeTag);
+
 protected:
 	UPROPERTY(Transient)
 	FLocomotionEssencialVariables LocomotionEssencialVariables;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Locomotion|Config")
+	TObjectPtr<class ULocomotionStateDataAsset> LocomotionStateDA;
 
 private:
 	void UpdateLocomotionState(const float DeltaTime);

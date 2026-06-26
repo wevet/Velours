@@ -176,9 +176,6 @@ FHitReactInfoRow* UWvCommonUtils::FindHitReactInfoRow(ABasePawn* Character)
 		return nullptr;
 	}
 
-	return nullptr;
-
-#if false
 	UWvHitReactDataAsset* HitReactDA = Avatar->GetHitReactDataAsset();
 	UCombatComponent* CombatComponent = Character->GetCombatComponent();
 	const UInventoryComponent* InventoryComponent = Character->GetInventoryComponent();
@@ -215,8 +212,8 @@ FHitReactInfoRow* UWvCommonUtils::FindHitReactInfoRow(ABasePawn* Character)
 	{
 		HitReactInfo = const_cast<FHitReactInfoRow*>(HitReactDA->GetHitReactInfoRow_Normal(ASC, HitReactFeatureTag));
 	}
+
 	return HitReactInfo;
-#endif
 
 
 }

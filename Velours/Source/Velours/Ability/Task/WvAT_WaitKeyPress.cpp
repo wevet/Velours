@@ -2,9 +2,9 @@
 
 
 #include "WvAT_WaitKeyPress.h"
-//#include "Character/PlayerCharacter.h"
+#include "Character/PlayerCharacter.h"
 //#include "Character/WvAIController.h"
-//#include "Character/WvPlayerController.h"
+#include "Character/WvPlayerController.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(WvAT_WaitKeyPress)
 
@@ -50,21 +50,21 @@ void UWvAT_WaitKeyPress::Activate()
 {
 	if (IsLocallyControlled())
 	{
-		//ABaseCharacter* Character = Cast<ABaseCharacter>(GetAvatarActor());
-		//if (Character)
-		//{
-		//	if (AWvPlayerController* PC = Cast<AWvPlayerController>(Character->GetController()))
-		//	{
-		//		PC->OnInputEventGameplayTagTrigger_Game.AddUniqueDynamic(this, &ThisClass::SingleInputOnCallback);
-		//		PC->OnPluralInputEventTrigger.AddUniqueDynamic(this, &ThisClass::PluralInputOnCallback);
-		//		PC->OnHoldingInputEventTrigger.AddUniqueDynamic(this, &ThisClass::HoldingInputOnCallback);
-		//	}
+		ABasePawn* Character = Cast<ABasePawn>(GetAvatarActor());
+		if (Character)
+		{
+			if (AWvPlayerController* PC = Cast<AWvPlayerController>(Character->GetController()))
+			{
+				PC->OnInputEventGameplayTagTrigger_Game.AddUniqueDynamic(this, &ThisClass::SingleInputOnCallback);
+				PC->OnPluralInputEventTrigger.AddUniqueDynamic(this, &ThisClass::PluralInputOnCallback);
+				PC->OnHoldingInputEventTrigger.AddUniqueDynamic(this, &ThisClass::HoldingInputOnCallback);
+			}
 
-		//	if (AWvAIController* AIC = Cast<AWvAIController>(Character->GetController()))
-		//	{
-		//		AIC->OnInputEventGameplayTagTrigger.AddUniqueDynamic(this, &ThisClass::SingleInputOnCallback);
-		//	}
-		//}
+			//if (AWvAIController* AIC = Cast<AWvAIController>(Character->GetController()))
+			//{
+			//	AIC->OnInputEventGameplayTagTrigger.AddUniqueDynamic(this, &ThisClass::SingleInputOnCallback);
+			//}
+		}
 	}
 
 

@@ -21,21 +21,6 @@ enum class ELSGait : uint8
 };
 
 UENUM(BlueprintType)
-enum class ELSMovementMode : uint8
-{
-	None     UMETA(DisplayName = "None"),
-	Grounded UMETA(DisplayName = "Grounded"),
-	Falling  UMETA(DisplayName = "Falling"),
-	Flying   UMETA(DisplayName = "Flying"),
-	Ragdoll  UMETA(DisplayName = "Ragdoll"),
-	Swimming UMETA(DisplayName = "Swimming"),
-	Mantling UMETA(DisplayName = "Mantling"),
-	Climbing UMETA(DisplayName = "Climbing"),
-	Ladder UMETA(DisplayName = "Ladder"),
-	Traversal UMETA(DisplayName = "Traversal"),
-};
-
-UENUM(BlueprintType)
 enum class ELSRotationMode : uint8
 {
 	VelocityDirection,
@@ -329,9 +314,6 @@ struct VELOURS_API FLocomotionEssencialVariables
 	GENERATED_BODY()
 
 public:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
-	ELSMovementMode LSMovementMode = ELSMovementMode::Grounded;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Locomotion")
 	ELSMovementDirection LSMovementDirection = ELSMovementDirection::F;
 

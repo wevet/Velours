@@ -33,7 +33,20 @@ int32 UWvAbilitySystemComponent::GetDefaultAbilityLevel() const
 void UWvAbilitySystemComponent::AbilityNotifyBegin(class UWvAnimNotifyState* Notify, UWvGameplayAbility* DebugAbility)
 {
 	FAnimatingAbilityNotify& AnimNotify = AnimatingAbilityNotifys.AddDefaulted_GetRef();
-	AnimNotify.Ability = DebugAbility ? DebugAbility : Cast<UWvGameplayAbility>(GetAnimatingAbility());
+
+	UWvGameplayAbility* NotifyAbility = DebugAbility;
+
+	if (!NotifyAbility)
+	{
+		NotifyAbility = Cast<UWvGameplayAbility>(GetAnimatingAbility());
+	}
+
+	if (!NotifyAbility)
+	{
+		NotifyAbility = Cast<UWvGameplayAbility>(GetCurrentMoverMontageAbility());
+	}
+
+	AnimNotify.Ability = NotifyAbility;
 	AnimNotify.Notify = Notify;
 }
 
@@ -59,7 +72,6 @@ APawn* UWvAbilitySystemComponent::GetAvatarCharacter() const
 	}
 	return nullptr;
 }
-
 
 const bool UWvAbilitySystemComponent::TryActivateAbilityByClassPressing(TSubclassOf<UGameplayAbility> InAbilityToActivate, bool bAllowRemoteActivation)
 {
@@ -100,10 +112,41 @@ const bool UWvAbilitySystemComponent::TryActivateAbilityByClassPressing(TSubclas
 	return bIsSucceed;
 }
 
+
 void UWvAbilitySystemComponent::OnTagUpdated(const FGameplayTag& Tag, bool TagExists)
 {
 	Super::OnTagUpdated(Tag, TagExists);
 	AbilityTagUpdateDelegate.Broadcast(Tag, TagExists);
+}
+
+
+void UWvAbilitySystemComponent::SetCurrentMoverMontageAbility(
+	UGameplayAbility* InAbility,
+	UAnimMontage* InMontage)
+{
+	CurrentMoverMontageAbility = InAbility;
+	CurrentMoverMontage = InMontage;
+}
+
+void UWvAbilitySystemComponent::ClearCurrentMoverMontageAbility(
+	UGameplayAbility* InAbility,
+	UAnimMontage* InMontage)
+{
+	if (CurrentMoverMontageAbility.Get() == InAbility && CurrentMoverMontage == InMontage)
+	{
+		CurrentMoverMontageAbility.Reset();
+		CurrentMoverMontage = nullptr;
+	}
+}
+
+UGameplayAbility* UWvAbilitySystemComponent::GetCurrentMoverMontageAbility() const
+{
+	return CurrentMoverMontageAbility.Get();
+}
+
+UAnimMontage* UWvAbilitySystemComponent::GetCurrentMoverMontage() const
+{
+	return CurrentMoverMontage;
 }
 
 

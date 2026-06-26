@@ -34,8 +34,6 @@ public:
 	virtual int32 GetDefaultAbilityLevel() const override;
 
 public:
-
-
 	UPROPERTY(BlueprintAssignable, BlueprintReadWrite, EditAnywhere)
 	FAbilityMontageBeginDelegate AbilityMontageBeginDelegate;
 
@@ -45,13 +43,26 @@ public:
 	UPROPERTY(BlueprintAssignable, BlueprintReadWrite, EditAnywhere)
 	FActorAbilityTagUpdateDelegate ActorAbilityTagUpdateDelegate;
 
+public:
 	TArray<FAnimatingAbilityNotify> AnimatingAbilityNotifys;
 
 	void AbilityNotifyBegin(class UWvAnimNotifyState* Notify, class UWvGameplayAbility* DebugAbility = nullptr);
 	void AbilityNotifyEnd(class UWvAnimNotifyState* Notify);
 
+	void SetCurrentMoverMontageAbility(class UGameplayAbility* InAbility, class UAnimMontage* InMontage);
+	void ClearCurrentMoverMontageAbility(class UGameplayAbility* InAbility, class UAnimMontage* InMontage);
+
+	class UGameplayAbility* GetCurrentMoverMontageAbility() const;
+	class UAnimMontage* GetCurrentMoverMontage() const;
+
 	const bool TryActivateAbilityByClassPressing(TSubclassOf<UGameplayAbility> InAbilityToActivate, bool bAllowRemoteActivation);
 
+private:
+	UPROPERTY()
+	TWeakObjectPtr<class UGameplayAbility> CurrentMoverMontageAbility;
+
+	UPROPERTY()
+	TObjectPtr<class UAnimMontage> CurrentMoverMontage;
 
 };
 
