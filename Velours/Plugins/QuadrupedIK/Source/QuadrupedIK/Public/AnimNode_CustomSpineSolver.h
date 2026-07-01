@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// Copyright 2022 wevet works All Rights Reserved.
 
 #pragma once
 #include "CustomIKData.h"
@@ -6,8 +6,82 @@
 #include "Animation/AnimNodeBase.h"
 #include "CustomIKData.h"
 #include "AnimNode_CustomIKControlBase.h"
+
+#include "Async/TaskGraphInterfaces.h"
+#include "HAL/CriticalSection.h"
+#include "Templates/SharedPointer.h"
+
 #include "AnimNode_CustomSpineSolver.generated.h"
 
+
+struct FQuadrupedIKTraceKey
+{
+	int32 A = 0;
+	int32 B = 0;
+	int32 C = 0;
+
+	friend uint32 GetTypeHash(const FQuadrupedIKTraceKey& Key)
+	{
+		return HashCombine(
+			HashCombine(::GetTypeHash(Key.A), ::GetTypeHash(Key.B)),
+			::GetTypeHash(Key.C));
+	}
+
+	bool operator==(const FQuadrupedIKTraceKey& Other) const
+	{
+		return A == Other.A && B == Other.B && C == Other.C;
+	}
+};
+
+struct FQuadrupedIKTraceSharedState
+{
+	mutable FCriticalSection Mutex;
+
+	TMap<FQuadrupedIKTraceKey, FHitResult> CachedHits;
+	TSet<FQuadrupedIKTraceKey> PendingKeys;
+
+	bool TryGetCachedHit(const FQuadrupedIKTraceKey& Key, FHitResult& OutHit) const
+	{
+		FScopeLock Lock(&Mutex);
+
+		if (const FHitResult* Found = CachedHits.Find(Key))
+		{
+			OutHit = *Found;
+			return true;
+		}
+
+		return false;
+	}
+
+	bool MarkPendingIfNeeded(const FQuadrupedIKTraceKey& Key)
+	{
+		FScopeLock Lock(&Mutex);
+
+		if (PendingKeys.Contains(Key))
+		{
+			return false;
+		}
+
+		PendingKeys.Add(Key);
+		return true;
+	}
+
+	void CompleteTrace(const FQuadrupedIKTraceKey& Key, const FHitResult& Hit)
+	{
+		FScopeLock Lock(&Mutex);
+
+		CachedHits.Add(Key, Hit);
+		PendingKeys.Remove(Key);
+	}
+
+	void Clear()
+	{
+		FScopeLock Lock(&Mutex);
+
+		CachedHits.Reset();
+		PendingKeys.Reset();
+	}
+};
 
 class FPrimitiveDrawInterface;
 class USkeletalMeshComponent;
@@ -396,6 +470,16 @@ private:
 		const FLinearColor& DebugColor,
 		const bool bDrawLine);
 
+	void ApplyLineTraceCached(
+		const FAnimationUpdateContext& Context,
+		const FQuadrupedIKTraceKey& Key,
+		const FVector& Origin,
+		const FVector& StartLocation,
+		const FVector& EndLocation,
+		FHitResult& OutHitResult,
+		const FLinearColor& DebugColor,
+		const bool bDrawLine);
+
 	void ApplyMultiPointTraceBulk(
 		const FAnimationUpdateContext& Context,
 		const FVector& Origin,
@@ -586,6 +670,29 @@ protected:
 
 	UPROPERTY(Transient)
 	TObjectPtr<USkeletalMeshComponent> owning_skel = nullptr;
+
+
+private:
+	TSharedPtr<FQuadrupedIKTraceSharedState, ESPMode::ThreadSafe> TraceSharedState;
+
+	uint32 TraceFrameCounter = 0;
+
+	FQuadrupedIKTraceKey MakeTraceKey(
+		int32 TraceGroup,
+		int32 TraceIndex,
+		int32 TraceSubIndex) const;
+
+	void RequestTraceOnGameThread(
+		const FAnimationUpdateContext& Context,
+		const FQuadrupedIKTraceKey& Key,
+		const FVector& StartLocation,
+		const FVector& EndLocation,
+		const FLinearColor& DebugColor);
+
+	bool IsValidTraceInput(
+		const FVector& StartLocation,
+		const FVector& EndLocation,
+		float Radius) const;
 
 };
 

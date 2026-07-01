@@ -26,6 +26,9 @@ rmdir /q /s ..\\Plugins\\WvPhysics\\Intermediate
 
 del ..\\.vsconfig
 del ..\\Velours.sln
+del ..\\Velours.slnx
+del ..\\Automation_Velours.sln
+del ..\\Automation_Velours.slnx
 
 pause
 exit 0

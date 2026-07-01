@@ -8,6 +8,27 @@
 #include "PredictionFootIKComponent.h"
 #include "PredictionAnimInstance.generated.h"
 
+class UCharacterMoverComponent;
+class UCapsuleComponent;
+
+
+USTRUCT()
+struct FToeRuntimeInfo
+{
+	GENERATED_BODY()
+
+	FVector PrevCSPos = FVector::ZeroVector;
+	FVector CurCSPos = FVector::ZeroVector;
+	FVector VelocityCS = FVector::ZeroVector;
+
+	FVector PrevWSPos = FVector::ZeroVector;
+	FVector CurWSPos = FVector::ZeroVector;
+	FVector VelocityWS = FVector::ZeroVector;
+	FVector RelativeVelocityWS = FVector::ZeroVector;
+
+	bool bInitialized = false;
+};
+
 USTRUCT()
 struct QUADRUPEDIK_API FIKBaseAnimInstanceProxy : public FAnimInstanceProxy
 {
@@ -77,7 +98,7 @@ private:
 	/// 	4. complete
 	/// </summary>
 private:
-	void Step0_Prepare();
+	void Step0_Prepare(float DeltaSeconds);
 	bool Step1_PredictiveToeEndPos(FVector& OutToeEndPos, const FPredictionToePathInfo& InPastPath, const float& InCurToeCurveValue, const FName& InToeName);
 	void Step2_TraceToePath(TArray<FVector>& OutToePath, float& OutToeHeightLimit, const FVector& InToeStartPos, const FVector& InToeCurPos, FVector InToeEndPos, const FName& InToeName, const float& DeltaSeconds);
 	void Step3_CalcMeshPosZ(float& OutTargetMeshPosZ, const float& InRightEndDist, const float& InLeftEndDist, const FVector& InRightToePos, const FVector& InLeftToePos, const FVector& InRightEndPos, const FVector& InLeftEndPos, const float& DeltaSeconds);
@@ -85,7 +106,22 @@ private:
 
 private:
 	void CurveSampling();
-	void ToePosSampling();
+	void ToePosSampling(float DeltaSeconds);
+
+	void UpdateToeRuntimeInfo(FToeRuntimeInfo& Info, const FVector& NewCSPos, const FTransform& ComponentToWorld, float DeltaSeconds);
+
+	bool IsToeVelocityPredictable(const FName& InToeName) const;
+
+	void CalcToeEndPosByToeVelocity(
+		FVector& OutToeEndPos,
+		const FPredictionToePathInfo& InPastPath,
+		const FName& InToeName);
+
+	void CalcToeEndPosByPastPath(
+		FVector& OutToeEndPos,
+		const FPredictionToePathInfo& InPastPath);
+
+
 	void CalcToeEndPosByCurve(FVector& OutToeEndPos, const float& InCurToeCurveValue);
 	void CalcToeEndPosByDefaultDistance(FVector& OutToeEndPos, const FPredictionToePathInfo& InPastPath);
 	void CheckEndPosByTrace(bool& OutEndPosChanged, FVector& OutToeEndPos, const FVector& InLastToeEndPos);
@@ -189,6 +225,30 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Config")
 	FVector TarFootOffset = FVector(0.f, 0.f, 1.5f);
 
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|No Curve")
+	bool bEnableToeVelocityPredictive = true;
+
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|No Curve")
+	bool bEnablePastPathPredictive = true;
+
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|No Curve")
+	float ToeVelocityPredictionTime = 0.18f;
+
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|No Curve")
+	float MinToeVelocityForPrediction = 20.f;
+
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|No Curve")
+	float MinToePredictDistance = 15.f;
+
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|No Curve")
+	float MaxToePredictDistance = 90.f;
+
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|No Curve")
+	float ToeVelocityDirWeight = 0.7f;
+
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|No Curve")
+	float OwnerVelocityDirWeight = 0.3f;
+
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TraceSettings")
 	TEnumAsByte<ETraceTypeQuery> TraceChannel = ETraceTypeQuery::TraceTypeQuery1;
@@ -221,14 +281,17 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "To Rig Parameter")
 	FVector LeftFootHitNormal = FVector::ZeroVector;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Reference")
-	class ACharacter* Character;
+	UPROPERTY(Transient)
+	TObjectPtr<class UCharacterMoverComponent> CharacterMoverComponent;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Reference")
-	class UCharacterMovementComponent* CharacterMovementComponent;
+	UPROPERTY(Transient)
+	TObjectPtr<class UCapsuleComponent> CapsuleComponent;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Reference")
-	class UPredictionFootIKComponent* PredictionFootIKComponent;
+	UPROPERTY(Transient)
+	TObjectPtr<class UCharacterMovementComponent> CharacterMovementComponent;
+
+	UPROPERTY(BlueprintReadOnly, Category = "FootIK")
+	TObjectPtr<class UPredictionFootIKComponent> PredictionFootIKComponent;
 
 private:
 	float CurRightToeCurveValue = 0.f;
@@ -266,7 +329,10 @@ private:
 	float WeightOfDisableFootIK = 0.f;
 	float AbnormalMoveTime = 0.f;
 
-	const FVector GetCharacterDirection();
+	FToeRuntimeInfo RightToeRuntimeInfo;
+	FToeRuntimeInfo LeftToeRuntimeInfo;
+
+
 
 protected:
 	UPROPERTY()
@@ -281,4 +347,16 @@ public:
 	virtual FVector GetBoneLocationOffset(const int32 BoneIndex) const;
 	virtual void SetBoneRotationOffset(const int32 BoneIndex, const FRotator& Rotation);
 	virtual FRotator GetBoneRotationOffset(const int32 BoneIndex) const;
+
+private:
+	bool ShouldUseRelativeLocationToMovementBase() const;
+	bool ShouldUseRelativeLocationToHitBase(const FHitResult& Hit) const;
+	UObject* GetMovementBaseObjectForPrediction() const;
+
+	TArray<AActor*> IgnoreActors;
+	bool bIsPawnTypeMover{ false };
+	bool ShouldRunPredictive() const;
+	FVector GetOwnerVelocity() const;
+	bool IsHitWalkableForPrediction(const FHitResult& Hit) const;
+
 };

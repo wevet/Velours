@@ -24,6 +24,12 @@
 			"Type": "UncookedOnly",
 			"LoadingPhase": "PreDefault"
 		}
+	],
+	"Plugins": [
+		{
+			"Name": "Mover",
+			"Enabled": true
+		}
 	]
 }
 

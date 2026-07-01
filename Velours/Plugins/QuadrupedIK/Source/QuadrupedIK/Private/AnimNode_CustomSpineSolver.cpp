@@ -1,4 +1,4 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+// Copyright 2022 wevet works All Rights Reserved.
 
 #include "AnimNode_CustomSpineSolver.h"
 #include "QuadrupedIK.h"
@@ -121,6 +121,23 @@ namespace SpineSolverHelper
 		return FRotator(Quaternion);
 	}
 
+	bool IsFiniteVector(const FVector& InVector)
+	{
+		return FMath::IsFinite(InVector.X) &&
+			FMath::IsFinite(InVector.Y) &&
+			FMath::IsFinite(InVector.Z);
+	}
+}
+
+namespace QuadrupedSpineTraceGroup
+{
+	static constexpr int32 Between = 0;
+	static constexpr int32 Foot = 1;
+	static constexpr int32 ParentBase = 2;
+	static constexpr int32 ParentFront = 3;
+	static constexpr int32 ParentBack = 4;
+	static constexpr int32 ParentLeft = 5;
+	static constexpr int32 ParentRight = 6;
 }
 
 FAnimNode_CustomSpineSolver::FAnimNode_CustomSpineSolver()
@@ -146,6 +163,11 @@ void FAnimNode_CustomSpineSolver::Initialize_AnyThread(const FAnimationInitializ
 	{
 		owning_skel = Context.AnimInstanceProxy->GetSkelMeshComponent();
 		IgnoreActors.Add(Context.AnimInstanceProxy->GetSkelMeshComponent()->GetOwner());
+	}
+
+	if (!TraceSharedState.IsValid())
+	{
+		TraceSharedState = MakeShared<FQuadrupedIKTraceSharedState, ESPMode::ThreadSafe>();
 	}
 
 	bEffectorInitialized = false;
@@ -598,6 +620,14 @@ void FAnimNode_CustomSpineSolver::UpdateInternal(const FAnimationUpdateContext& 
 	const auto SK = Context.AnimInstanceProxy->GetSkelMeshComponent();
 	const AActor* Owner = SK->GetOwner();
 
+	ComponentScale = ComponentToWorld.GetScale3D().Z * VirtualScale;
+
+	if (!FMath::IsFinite(ComponentScale) || FMath::IsNearlyZero(ComponentScale))
+	{
+		ResetTraceResults();
+		return;
+	}
+
 	const float TraceUpperHeight = (LineTraceUpperHeight * ComponentScale);
 	const float TraceDownwardHeight = (LineTraceDownwardHeight * ComponentScale);
 
@@ -605,10 +635,9 @@ void FAnimNode_CustomSpineSolver::UpdateInternal(const FAnimationUpdateContext& 
 	const FVector ForwardDir = ComponentToWorld.TransformVector(ForwardDirectionVector).GetSafeNormal();
 	const FVector RightDir = FVector::CrossProduct(UpVector, ForwardDir).GetSafeNormal();
 
-
-	const float MaxSpeed = 100.0f;
-	ShiftSpeed = FMath::Clamp(ShiftSpeed, 0.0f, MaxSpeed);
-	ComponentScale = ComponentToWorld.GetScale3D().Z * VirtualScale;
+	//const float MaxSpeed = 100.0f;
+	//ShiftSpeed = FMath::Clamp(ShiftSpeed, 0.0f, MaxSpeed);
+	//ComponentScale = ComponentToWorld.GetScale3D().Z * VirtualScale;
 
 	if (IsValid(Owner))
 	{
@@ -701,6 +730,8 @@ void FAnimNode_CustomSpineSolver::UpdateInternal(const FAnimationUpdateContext& 
 		}
 		else
 		{
+
+#if false
 			// base
 			ApplyLineTrace(Context, FeetCenterPoint, OriginUpper, OriginDown, HitPair.ParentSpineHit, FLinearColor::Green, true);
 			// front
@@ -711,7 +742,32 @@ void FAnimNode_CustomSpineSolver::UpdateInternal(const FAnimationUpdateContext& 
 			ApplyLineTrace(Context, FeetCenterPoint, SpiralLeftUpper, SpiralLeftDown, HitPair.ParentLeftHit, FLinearColor::Blue, true);
 			// right
 			ApplyLineTrace(Context, FeetCenterPoint, SpiralRightUpper, SpiralRightDown, HitPair.ParentRightHit, FLinearColor::Red, true);
+#endif
 
+			ApplyLineTraceCached(
+				Context, 
+				MakeTraceKey(QuadrupedSpineTraceGroup::ParentBase, i, 0), 
+				FeetCenterPoint, OriginUpper, OriginDown, HitPair.ParentSpineHit, FLinearColor::Green, true);
+
+			ApplyLineTraceCached(
+				Context,
+				MakeTraceKey(QuadrupedSpineTraceGroup::ParentFront, i, 0),
+				FeetCenterPoint, SpiralFrontUpper, SpiralFrontDown, HitPair.ParentFrontHit, FLinearColor::Yellow, true);
+
+			ApplyLineTraceCached(
+				Context,
+				MakeTraceKey(QuadrupedSpineTraceGroup::ParentBack, i, 0),
+				FeetCenterPoint, SpiralBackUpper, SpiralBackDown, HitPair.ParentBackHit, FLinearColor::Black, true);
+
+			ApplyLineTraceCached(
+				Context,
+				MakeTraceKey(QuadrupedSpineTraceGroup::ParentLeft, i, 0),
+				FeetCenterPoint, SpiralLeftUpper, SpiralLeftDown, HitPair.ParentLeftHit, FLinearColor::Blue, true);
+
+			ApplyLineTraceCached(
+				Context,
+				MakeTraceKey(QuadrupedSpineTraceGroup::ParentRight, i, 0),
+				FeetCenterPoint, SpiralRightUpper, SpiralRightDown, HitPair.ParentRightHit, FLinearColor::Red, true);
 		}
 
 		CalcParentHitResult(Context, HitPair.ParentSpineHit, FeetCenterPoint, HitPair.ParentSpinePoint);
@@ -3462,5 +3518,222 @@ void FAnimNode_CustomSpineSolver::ResetTraceResults()
 	//PelvisBaseOffset = 0.0f;
 
 	//bRequireSnap = true;
+}
+
+
+void FAnimNode_CustomSpineSolver::ApplyLineTraceCached(
+	const FAnimationUpdateContext& Context,
+	const FQuadrupedIKTraceKey& Key,
+	const FVector& Origin,
+	const FVector& StartLocation,
+	const FVector& EndLocation,
+	FHitResult& OutHitResult,
+	const FLinearColor& DebugColor,
+	const bool bDrawLine)
+{
+	OutHitResult.Init();
+
+	if (TraceSharedState.IsValid())
+	{
+		TraceSharedState->TryGetCachedHit(Key, OutHitResult);
+	}
+
+	const float Radius = TraceRadiusValue * ComponentScale;
+	if (!IsValidTraceInput(StartLocation, EndLocation, Radius))
+	{
+		return;
+	}
+
+	if (!TraceSharedState.IsValid())
+	{
+		return;
+	}
+
+	const bool bShouldDispatch = TraceSharedState->MarkPendingIfNeeded(Key);
+	if (bShouldDispatch)
+	{
+		RequestTraceOnGameThread(
+			Context,
+			Key,
+			StartLocation,
+			EndLocation,
+			DebugColor);
+	}
+
+	if (bDrawLine)
+	{
+		TraceStartList.Add(StartLocation);
+		TraceEndList.Add(EndLocation);
+		TraceLinearColor.Add(DebugColor.ToFColor(true));
+	}
+}
+
+FQuadrupedIKTraceKey FAnimNode_CustomSpineSolver::MakeTraceKey(
+	int32 TraceGroup,
+	int32 TraceIndex,
+	int32 TraceSubIndex) const
+{
+	FQuadrupedIKTraceKey Key;
+	Key.A = TraceGroup;
+	Key.B = TraceIndex;
+	Key.C = TraceSubIndex;
+	return Key;
+}
+
+
+void FAnimNode_CustomSpineSolver::RequestTraceOnGameThread(
+	const FAnimationUpdateContext& Context,
+	const FQuadrupedIKTraceKey& Key,
+	const FVector& StartLocation,
+	const FVector& EndLocation,
+	const FLinearColor& DebugColor)
+{
+	USkeletalMeshComponent* SK = Context.AnimInstanceProxy ? Context.AnimInstanceProxy->GetSkelMeshComponent() : nullptr;
+
+	if (!SK || !TraceSharedState.IsValid())
+	{
+		return;
+	}
+
+	TWeakObjectPtr<USkeletalMeshComponent> WeakSK(SK);
+	TSharedPtr<FQuadrupedIKTraceSharedState, ESPMode::ThreadSafe> SharedState = TraceSharedState;
+
+	const EIKRaycastType LocalRaycastTraceType = RaycastTraceType;
+	const TEnumAsByte<ETraceTypeQuery> LocalTraceChannel = Trace_Channel;
+	const TArray<AActor*> LocalIgnoreActors = IgnoreActors;
+	const float LocalNormalDotThreshold = NormalDotThreshold;
+	const float LocalRadius = TraceRadiusValue * ComponentScale;
+	const float LocalComponentScale = ComponentScale;
+
+	FFunctionGraphTask::CreateAndDispatchWhenReady(
+		[
+			WeakSK,
+			SharedState,
+			Key,
+			StartLocation,
+			EndLocation,
+			DebugColor,
+			LocalRaycastTraceType,
+			LocalTraceChannel,
+			LocalIgnoreActors,
+			LocalNormalDotThreshold,
+			LocalRadius,
+			LocalComponentScale
+		]()
+	{
+		if (!WeakSK.IsValid() || !SharedState.IsValid())
+		{
+			return;
+		}
+
+		USkeletalMeshComponent* SKPtr = WeakSK.Get();
+		UWorld* World = SKPtr ? SKPtr->GetWorld() : nullptr;
+		if (!World)
+		{
+			return;
+		}
+
+		if (!SpineSolverHelper::IsFiniteVector(StartLocation) || !SpineSolverHelper::IsFiniteVector(EndLocation))
+		{
+			return;
+		}
+
+		TArray<FHitResult> HitResults;
+		const EDrawDebugTrace::Type DebugTrace = EDrawDebugTrace::None;
+
+		switch (LocalRaycastTraceType)
+		{
+		case EIKRaycastType::LineTrace:
+		{
+			UKismetSystemLibrary::LineTraceMulti(
+				World,
+				StartLocation,
+				EndLocation,
+				LocalTraceChannel,
+				true,
+				LocalIgnoreActors,
+				DebugTrace,
+				HitResults,
+				true,
+				DebugColor);
+		}
+		break;
+
+		case EIKRaycastType::SphereTrace:
+		{
+			const float SafeRadius = FMath::Max(LocalRadius, 1.0f);
+
+			UKismetSystemLibrary::SphereTraceMulti(
+				World,
+				StartLocation,
+				EndLocation,
+				SafeRadius,
+				LocalTraceChannel,
+				true,
+				LocalIgnoreActors,
+				DebugTrace,
+				HitResults,
+				true,
+				DebugColor);
+		}
+		break;
+
+		case EIKRaycastType::BoxTrace:
+		{
+			const float SafeRadius = FMath::Max(LocalRadius, 1.0f);
+			const FVector Extent(SafeRadius, SafeRadius, FMath::Max(1.0f, SafeRadius * 0.25f));
+
+			UKismetSystemLibrary::BoxTraceMulti(
+				World,
+				StartLocation,
+				EndLocation,
+				Extent,
+				FRotator::ZeroRotator,
+				LocalTraceChannel,
+				true,
+				LocalIgnoreActors,
+				DebugTrace,
+				HitResults,
+				true,
+				DebugColor);
+		}
+		break;
+		}
+
+		FHitResult BestHit;
+		UQuadrupedIKLibrary::GetSimpleHitResult(
+			HitResults,
+			LocalNormalDotThreshold,
+			BestHit);
+
+		SharedState->CompleteTrace(Key, BestHit);
+	},
+		TStatId(),
+		nullptr,
+		ENamedThreads::GameThread);
+}
+
+
+bool FAnimNode_CustomSpineSolver::IsValidTraceInput(
+	const FVector& StartLocation,
+	const FVector& EndLocation,
+	float Radius) const
+{
+	if (!SpineSolverHelper::IsFiniteVector(StartLocation) || !SpineSolverHelper::IsFiniteVector(EndLocation))
+	{
+		return false;
+	}
+
+	if (StartLocation.Equals(EndLocation, KINDA_SMALL_NUMBER))
+	{
+		return false;
+	}
+
+	if (!FMath::IsFinite(Radius) || Radius <= KINDA_SMALL_NUMBER)
+	{
+		return false;
+	}
+
+	return true;
 }
 

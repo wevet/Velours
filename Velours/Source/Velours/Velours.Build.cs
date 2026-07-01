@@ -59,10 +59,11 @@ public class Velours : ModuleRules
 				"MassZoneGraphNavigation",
 				"Niagara",
 				"StateTreeModule",
-				// custom plugin
-				"WvAbilitySystem",
 				"Mover",
 				"NetworkPrediction",
+				// custom plugin
+				"WvAbilitySystem",
+				"QuadrupedIK",
 			}
 		);
 

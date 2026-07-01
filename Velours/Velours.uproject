@@ -296,16 +296,13 @@
 			"Enabled": true,
 			"SupportedTargetPlatforms": [
 				"Win64",
-				"Linux"
+				"Linux",
+				"Mac"
 			]
 		},
 		{
 			"Name": "MetaHumanCoreTech",
-			"Enabled": true,
-			"SupportedTargetPlatforms": [
-				"Win64",
-				"Linux"
-			]
+			"Enabled": true
 		},
 		{
 			"Name": "MetaHumanCharacter",

@@ -136,6 +136,8 @@ ABasePawn::ABasePawn(const FObjectInitializer& ObjectInitializer) : Super(Object
 	WvRelationshipComponent = ObjectInitializer.CreateDefaultSubobject<UWvRelationshipComponent>(this, TEXT("WvRelationshipComponent"));
 	WvRelationshipComponent->bAutoActivate = 1;
 
+	PredictionFootIKComponent = ObjectInitializer.CreateDefaultSubobject<UPredictionFootIKComponent>(this, TEXT("PredictionFootIKComponent"));
+	PredictionFootIKComponent->bAutoActivate = 1;
 
 	MyTeamID = FGenericTeamId(0);
 	CharacterTag = FGameplayTag::RequestGameplayTag(TAG_Character_Default.GetTag().GetTagName());

@@ -30,6 +30,7 @@ public class QuadrupedIK : ModuleRules
 			new string[]
 			{
 				"Core",
+				"Mover",
 			}
 		);
 
