@@ -28,12 +28,23 @@ void FAnimNode_CacheToePosForFootIK::EvaluateSkeletalControl_AnyThread(FComponen
 	DECLARE_SCOPE_HIERARCHICAL_COUNTER_ANIMNODE(EvaluateSkeletalControl_AnyThread)
 	check(OutBoneTransforms.Num() == 0);
 
-	// トランスフォームを適用する方法は、FMatrixまたはFTransformと同じです。
-	// スケールを最初に適用し、回転、平行移動を適用する。
-	// 最初に平行移動したい場合は、2つのノードが必要で、1つ目のノードは平行移動、2つ目のノードは回転を行う。
+	// The method for applying transforms is the same as for FMatrix or FTransform.
+	// Apply scaling first, followed by rotation and translation.
+	// If you want to apply translation first, you'll need two nodes: the first node handles translation, and the second node handles rotation.
 	const FBoneContainer& BoneContainer = Output.Pose.GetPose().GetBoneContainer();
 
-	if (PredictionFootIKComponent)
+	if (!IsValid(PredictionFootIKComponent))
+	{
+		auto SK = Output.AnimInstanceProxy->GetSkelMeshComponent();
+
+		if (SK && SK->GetOwner())
+		{
+			PredictionFootIKComponent = SK->GetOwner()->FindComponentByClass<UPredictionFootIKComponent>();
+		}
+	}
+
+
+	if (IsValid(PredictionFootIKComponent))
 	{
 		FCompactPoseBoneIndex RightToeCompactPoseBone = RightToe.GetCompactPoseIndex(BoneContainer);
 		FCompactPoseBoneIndex LeftToeCompactPoseBone = LeftToe.GetCompactPoseIndex(BoneContainer);
@@ -41,7 +52,7 @@ void FAnimNode_CacheToePosForFootIK::EvaluateSkeletalControl_AnyThread(FComponen
 		FTransform LeftBoneTM = Output.Pose.GetComponentSpaceTransform(LeftToeCompactPoseBone);
 
 		PredictionFootIKComponent->SetToeCSPos(RightBoneTM.GetLocation(), LeftBoneTM.GetLocation(), FinalWeight);
-	}	
+	}
 }
 
 bool FAnimNode_CacheToePosForFootIK::IsValidToEvaluate(const USkeleton* Skeleton, const FBoneContainer& RequiredBones)
@@ -61,15 +72,6 @@ void FAnimNode_CacheToePosForFootIK::Initialize_AnyThread(const FAnimationInitia
 	DECLARE_SCOPE_HIERARCHICAL_COUNTER_ANIMNODE(Initialize_AnyThread)
 	Super::Initialize_AnyThread(Context);
 
-	if (UAnimInstance* AnimInstance = Cast<UAnimInstance>(Context.AnimInstanceProxy->GetAnimInstanceObject()))
-	{
-		if (APawn* Pawn = AnimInstance->TryGetPawnOwner())
-		{
-			if (UActorComponent* Comp = Pawn->GetComponentByClass(UPredictionFootIKComponent::StaticClass()))
-			{
-				PredictionFootIKComponent = Cast<UPredictionFootIKComponent>(Comp);
-			}
-		}
-	}
+
 }
 

@@ -7,8 +7,7 @@
 #include "CustomIKData.h"
 #include "PredictionFootIKComponent.generated.h"
 
-DECLARE_LOG_CATEGORY_EXTERN(LogPredictionFootIK, Log, All);
-
+class UAnimInstance;
 
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
@@ -30,6 +29,10 @@ public:
 	void ClearCurveValues();
 	void ClearToeCSPos();
 
+	void ChangeSpeedCurveValue(EPredictionGait InGait, float InWeight, float InCurveValue);
+
+	void UpdateAnimInstance(UAnimInstance* NewAnimInstance);
+
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FName RightFootCurveName;
@@ -45,8 +48,11 @@ private:
 	TArray<FFootGaitCurveInfo> GaitCurveArray;
 
 	float ToeWeight = 0.f;
-	FVector RightToeCSPos;
-	FVector LeftToeCSPos;
+	FVector RightToeCSPos{ FVector::ZeroVector };
+	FVector LeftToeCSPos{ FVector::ZeroVector };
+
+	UPROPERTY()
+	TObjectPtr<class UAnimInstance> AnimInstance;
 };
 
 
