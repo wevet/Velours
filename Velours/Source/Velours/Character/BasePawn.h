@@ -433,6 +433,12 @@ protected:
 
 	void SetAbilitySystemLoadState(EAbilitySystemLoadState NewState, EAbilitySystemLoadReason Reason);
 
+	UFUNCTION(BlueprintCallable, Category = "BaseCharacter|Locomotion")
+	void SetAiming(const bool bIsNewAiming);
+
+	UFUNCTION(BlueprintCallable, Category = "BaseCharacter|Locomotion")
+	bool GetAiming() const;
+
 public:
 	const FCustomWvAbilitySystemAvatarData& GetCustomWvAbilitySystemData();
 

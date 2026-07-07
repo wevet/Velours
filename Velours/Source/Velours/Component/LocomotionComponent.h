@@ -79,6 +79,8 @@ public:
 
 	void OnMovementModeChanged(const FName& PreviousModeName, const FName& NewModeName, FGameplayTag& OutPrevMovementModeTag, FGameplayTag& OutNextMovementModeTag);
 
+	void SetAiming(const bool bIsNewAiming);
+
 protected:
 	UPROPERTY(Transient)
 	FLocomotionEssencialVariables LocomotionEssencialVariables;

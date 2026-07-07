@@ -97,3 +97,5 @@ Platforms/Windows/*
 venv/
 __pycache__/
 
+# ignore mcp
+.codex/

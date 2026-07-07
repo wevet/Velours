@@ -224,6 +224,9 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Config|Predictive")
 	uint8 bEnableDefaultDistancePredictive : 1;
 
+	UPROPERTY(EditAnywhere, Category = "Config|Predictive")
+	uint8 bEnableToeVelocityPredictive : 1;
+
 
 	UPROPERTY(EditAnywhere, Category = "Config")
 	float DefaultToeFirstPathDistance = 200.0f;
@@ -305,9 +308,6 @@ public:
 
 	UPROPERTY(EditAnywhere, Category = "Config")
 	float ToeLeaveFloorOffset{4.0f};
-
-	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|No Curve")
-	bool bEnableToeVelocityPredictive = true;
 
 	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|No Curve")
 	float ToeVelocityPredictionTime = 0.18f;
@@ -427,9 +427,6 @@ protected:
 
 
 private:
-	bool ShouldUseRelativeLocationToMovementBase() const;
-	bool ShouldUseRelativeLocationToHitBase(const FHitResult& Hit) const;
-	UObject* GetMovementBaseObjectForPrediction() const;
 
 	bool bIsPawnTypeMover{ false };
 	bool ShouldRunPredictive() const;

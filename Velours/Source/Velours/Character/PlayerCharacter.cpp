@@ -266,7 +266,7 @@ void APlayerCharacter::HandleWalking(const bool bIsPress)
 
 void APlayerCharacter::HandleMeleeAction(const bool bIsPress)
 {
-	auto Inventory = GetInventoryComponent();
+	const UInventoryComponent* Inventory = GetInventoryComponent();
 
 	if (bIsPress)
 	{

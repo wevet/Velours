@@ -130,8 +130,11 @@ FVector ULocomotionComponent::ChooseTargetPosition() const
 	return LocomotionEssencialVariables.LookAtTarget.IsValid() ? LocomotionEssencialVariables.LookAtTarget->GetActorLocation() : FVector::ZeroVector;
 }
 
-void ULocomotionComponent::OnMovementModeChanged(const FName& PreviousModeName, const FName& NewModeName,
-	FGameplayTag& OutPrevMovementModeTag, FGameplayTag& OutNextMovementModeTag)
+void ULocomotionComponent::OnMovementModeChanged(
+	const FName& PreviousModeName,
+	const FName& NewModeName,
+	FGameplayTag& OutPrevMovementModeTag,
+	FGameplayTag& OutNextMovementModeTag)
 {
 
 	if (LocomotionStateDA)
@@ -139,8 +142,22 @@ void ULocomotionComponent::OnMovementModeChanged(const FName& PreviousModeName, 
 		OutPrevMovementModeTag = LocomotionStateDA->FindMovementModeTag(PreviousModeName);
 		OutNextMovementModeTag = LocomotionStateDA->FindMovementModeTag(NewModeName);
 
-		UE_LOG(LogBaseCharacter, Log, TEXT("[%s] : PreviousModeName => %s, NewModeName => %s"), *FString(__FUNCTION__), *PreviousModeName.ToString(),
+		UE_LOG(LogBaseCharacter, Log, TEXT("[%s] : PreviousModeName => %s, NewModeName => %s"), 
+			*FString(__FUNCTION__), 
+			*PreviousModeName.ToString(),
 			*NewModeName.ToString());
 
 	}
 }
+
+void ULocomotionComponent::SetAiming(const bool bIsNewAiming)
+{
+	const bool bIsAiming = LocomotionEssencialVariables.bAiming;
+	if (bIsAiming != bIsNewAiming)
+	{
+		LocomotionEssencialVariables.bAiming = bIsNewAiming;
+		//
+	}
+
+}
+

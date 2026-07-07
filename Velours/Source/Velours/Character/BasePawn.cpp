@@ -1495,4 +1495,19 @@ void ABasePawn::UpdateTargetableActorList(AActor* NewActor, const bool bIsAdd)
 	}
 }
 
+#pragma region Locomotion
+void ABasePawn::SetAiming(const bool bIsNewAiming)
+{
+	ULocomotionComponent* Comp = GetLocomotionComponent();
+	Comp->SetAiming(bIsNewAiming);
+}
+
+bool ABasePawn::GetAiming() const
+{
+	const FLocomotionEssencialVariables& LocomotionVariables = GetLocomotionComponent()->GetLocomotionEssencialVariables();
+	return LocomotionVariables.bAiming;
+}
+
+
+#pragma endregion
 
