@@ -10,6 +10,7 @@
 
 class UCharacterMoverComponent;
 class UCapsuleComponent;
+struct FFloatSpringState;
 
 
 USTRUCT()
@@ -27,6 +28,31 @@ struct FToeRuntimeInfo
 	FVector RelativeVelocityWS = FVector::ZeroVector;
 
 	bool bInitialized = false;
+};
+
+USTRUCT()
+struct FToePredictionDebugData
+{
+	GENERATED_BODY()
+
+	FVector RawToeWSPos = FVector::ZeroVector;
+	FVector LeaveFloorPos = FVector::ZeroVector;
+	FVector PredictionOrigin = FVector::ZeroVector;
+	FVector RawPredictionEndPos = FVector::ZeroVector;
+	FVector FinalPathEndPos = FVector::ZeroVector;
+	FVector LastPathStartPos = FVector::ZeroVector;
+
+	FVector ToeVelocityWS = FVector::ZeroVector;
+	FVector RelativeToeVelocityWS = FVector::ZeroVector;
+	FVector OwnerVelocityWS = FVector::ZeroVector;
+
+	bool bUsedContact = false;
+	bool bUsedPastPath = false;
+	bool bUsedToeVelocity = false;
+	bool bUsedDefaultDistance = false;
+	bool bPathValid = false;
+	bool bUsedCurve = false;
+
 };
 
 USTRUCT()
@@ -94,6 +120,8 @@ public:
 public:
 	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
 	bool EnableFootIK() const;
+
+	float GetPelvisFinalOffset() const;
 
 protected:
 	virtual bool ForceDisableFootIK() { return false; }
@@ -173,12 +201,13 @@ private:
 
 	void GetToeHeightLimitByPathCurve(float& OutHeightLimit, const FVector& InToeCurPos, const TArray<FVector>& InToePath);
 
+
 	void CalcPelvisOffset2(
 		float& OutTargetMeshPosZ,
 		FVector& OutFootStartPos,
 		const FVector& InFootEndPos,
 		const FVector& InMappedPos,
-		float dt,
+		const float& DeltaSeconds,
 		EPredictionMotionFoot InLstMotionFoot,
 		EPredictionMotionFoot InCurMotionFoot);
 
@@ -190,124 +219,147 @@ private:
 		FVector& OutRightHitNor,
 		FVector& OutLeftHitNor);
 
+	bool RefineToeEndPosByTerrain(
+		FVector& InOutToeEndPos,
+		const FVector& InPredictionDirection) const;
+
+
 private:
-	void DebugDrawToePath(
-		const TArray<FVector>& InToePath,
-		const FVector& InToePos,
-		const FVector& InToePredictivePos,
-		FLinearColor InColor);
 
-	void DebugDrawPelvisPath();
-
+	void DebugDrawToePredictionDetailed(
+		const FToePredictionDebugData& DebugData,
+		const TArray<FVector>& ToePath,
+		const FLinearColor& PathColor,
+		const FString& Prefix) const;
 public:
-	UPROPERTY(EditAnywhere, Category = "Debug")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Debug")
 	uint8 bDrawDebug : 1;
 
-	UPROPERTY(EditAnywhere, Category = "Debug", meta = (EditCondition = "bDrawDebug"))
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Debug", meta = (EditCondition = "bDrawDebug"))
 	uint8 bDrawDebugForToe : 1;
 
-	UPROPERTY(EditAnywhere, Category = "Debug", meta = (EditCondition = "bDrawDebug"))
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Debug", meta = (EditCondition = "bDrawDebug"))
 	uint8 bDrawDebugForPelvis : 1;
 
-	UPROPERTY(EditAnywhere, Category = "Debug", meta = (EditCondition = "bDrawDebug"))
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Debug", meta = (EditCondition = "bDrawDebug"))
 	uint8 bDrawDebugForReactFootIK : 1;
 
-	UPROPERTY(EditAnywhere, Category = "Config|Predictive")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
 	bool bIsArrowPredictionFunction{false};
 
-	UPROPERTY(EditAnywhere, Category = "Config|Predictive")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
+	TEnumAsByte<ETraceTypeQuery> TraceChannel = ETraceTypeQuery::TraceTypeQuery1;
+
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
 	uint8 bEnableCurvePredictive : 1;
 
-	UPROPERTY(EditAnywhere, Category = "Config|Predictive")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
 	uint8 bEnablePastPathPredictive : 1;
 
-	UPROPERTY(EditAnywhere, Category = "Config|Predictive")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
 	uint8 bEnableDefaultDistancePredictive : 1;
 
-	UPROPERTY(EditAnywhere, Category = "Config|Predictive")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
 	uint8 bEnableToeVelocityPredictive : 1;
 
 
-	UPROPERTY(EditAnywhere, Category = "Config")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
 	float DefaultToeFirstPathDistance = 200.0f;
 
-	UPROPERTY(EditAnywhere, Category = "Config")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
 	float ReactFootIKUpTraceHeight = 40.f;
 
-	UPROPERTY(EditAnywhere, Category = "Config")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
 	float ReactFootIKDownTraceHeight = 100.f;
 
-	UPROPERTY(EditAnywhere, Category = "Config")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
 	float ToeWidth = 5.f;
 
-	UPROPERTY(EditAnywhere, Category = "Config")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
 	float AbnormalMoveCosAngle = 0.71f;
 
-	UPROPERTY(EditAnywhere, Category = "Config")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
 	float AbnormalMoveTimeLimit = 0.5f;
 
-	UPROPERTY(EditAnywhere, Category = "Config")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
 	float TeleportedDistanceThreshold = 100.f;
 
-	UPROPERTY(EditAnywhere, Category = "Config|HeightThreshold")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|HeightThreshold")
 	float ToeHeightThreshold = 50.f;
 
-	UPROPERTY(EditAnywhere, Category = "Config|HeightThreshold")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|HeightThreshold")
 	float PelvisHeightUpThreshold = 50.f;
 
-	UPROPERTY(EditAnywhere, Category = "Config|HeightThreshold")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|HeightThreshold")
 	float PelvisHeightDownThreshold = 50.f;
 
-	UPROPERTY(EditAnywhere, Category = "Config|HeightThreshold")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|HeightThreshold")
 	float ReactFootIKHeightThreshold = 60.f;
 
-	UPROPERTY(EditAnywhere, Category = "Config|EndPosChanged")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|EndPosChanged")
 	float EndPosChangedDistanceSquareThreshold = 100.f;
 
-	UPROPERTY(EditAnywhere, Category = "Config|EndPosChanged")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|EndPosChanged")
 	float EndPosChangedHeightThreshold = 2.5f;
 
-	UPROPERTY(EditAnywhere, Category = "Config")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
 	float TraceIntervalLength = 30.f;
 
-	UPROPERTY(EditAnywhere, Category = "Config")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
 	float InvalidToeEndDist = 10.f;
 
-	UPROPERTY(EditAnywhere, Category = "Config")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
 	float MaxSlopeToePathAlpha = 0.f;
 
-	UPROPERTY(EditAnywhere, Category = "Config")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
 	float MaxSlopeToePathDownZ = 20.f;
 
-	UPROPERTY(EditAnywhere, Category = "Config|InterpSpeed")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
+	float LeaveHysteresisThreshold{ 5.0f };
+
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
+	FVector2D StrideRatioRange{0.5f, 5.0f};
+
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|InterpSpeed")
 	float EndPosZInterpSpeed = 15.f;
 
-	UPROPERTY(EditAnywhere, Category = "Config|InterpSpeed")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|InterpSpeed")
 	float MeshPosZInterpSpeedWhenDisableFootIK = 10.f;
 
-	UPROPERTY(EditAnywhere, Category = "Config|InterpSpeed")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|InterpSpeed")
 	float MeshPosZInterpSpeedWhenReactFootIK = 10.f;
 
-	UPROPERTY(EditAnywhere, Category = "Config|InterpSpeed")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|InterpSpeed")
 	float FootIKHeightOffsetInterpSpeed = 10.f;
 
-	UPROPERTY(EditAnywhere, Category = "Config")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|InterpSpeed")
+	float PelvisInterpSpeed = 10.0f;
+
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Joint")
 	FName RightToeName;
 
-	UPROPERTY(EditAnywhere, Category = "Config")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Joint")
 	FName LeftToeName;
 
-	UPROPERTY(EditAnywhere, Category = "Config")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Joint")
 	FName RightFootName;
 
-	UPROPERTY(EditAnywhere, Category = "Config")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Joint")
 	FName LeftFootName;
 
-	UPROPERTY(EditAnywhere, Category = "Config")
-	FVector TarFootOffset = FVector(0.f, 0.f, 1.5f);
-
-	UPROPERTY(EditAnywhere, Category = "Config")
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
 	float ToeLeaveFloorOffset{4.0f};
+
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
+	FVector TargetFootEndPosOffset = FVector(0.0f, 0.0f, 1.5f);
+
+	/** LineTracePath2 to stepup params */
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
+	float PredictionMaxStepUp = 30.0f;
+
+	/** LineTracePath2 to stepup params */
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
+	float PredictionMaxStepDown = 60.f;
 
 	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|No Curve")
 	float ToeVelocityPredictionTime = 0.18f;
@@ -328,10 +380,40 @@ public:
 	float OwnerVelocityDirWeight = 0.3f;
 
 
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "TraceSettings")
-	TEnumAsByte<ETraceTypeQuery> TraceChannel = ETraceTypeQuery::TraceTypeQuery1;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prediction Foot IK|Runtime Prediction")
+	float PastPathDirectionWeight = 0.35f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prediction Foot IK|Runtime Prediction")
+	float ToeVelocityDirectionWeight = 0.40f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prediction Foot IK|Runtime Prediction")
+	float OwnerVelocityDirectionWeight = 0.25f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prediction Foot IK|Runtime Prediction")
+	float MinStrideScale = 0.75f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prediction Foot IK|Runtime Prediction")
+	float MaxStrideScale = 1.50f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prediction Foot IK|Runtime Prediction")
+	float ReferenceMoveSpeed = 300.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prediction Foot IK|Terrain Prediction")
+	float LandingProbeSideOffset = 12.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prediction Foot IK|Terrain Prediction")
+	float LandingProbeForwardOffset = 15.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prediction Foot IK|Terrain Prediction")
+	float LandingProbeTraceHeight = 150.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prediction Foot IK|Config")
+	float PathStartChangedDistance = 8.f;
+
+	FToePredictionDebugData RightToeDebugData;
+	FToePredictionDebugData LeftToeDebugData;
+
+	FVector LastValidMoveDirection = FVector::ZeroVector;
 public:
 	UPROPERTY(BlueprintReadOnly, Category = "To Rig Parameter")
 	float FootIKWeight = 0.f;
@@ -432,5 +514,10 @@ private:
 	bool ShouldRunPredictive() const;
 	FVector GetOwnerVelocity() const;
 	bool IsHitWalkableForPrediction(const FHitResult& Hit) const;
+
+	// スプリング減衰後の、平滑化済みメッシュ(pelvis)ワールドZ。
+	// 「実際に出力する値」を保持し続けるバッファで、毎フレームここを目標へ寄せていく。
+	float SmoothedMeshWorldPosZ = 0.f;
+
 
 };

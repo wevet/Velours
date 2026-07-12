@@ -88,7 +88,7 @@ void UPredictionFootIKComponent::ChangeSpeedCurveValue(EPredictionGait InGait, f
 
 void UPredictionFootIKComponent::SetToeCSPos(const FVector& InRightToeCSPos, const FVector& InLeftToeCSPos, const float& InWeight)
 {
-	if (InWeight > ToeWeight)
+	//if (InWeight > ToeWeight)
 	{
 		ToeWeight = InWeight;
 		RightToeCSPos = InRightToeCSPos;

@@ -663,8 +663,6 @@ void FAnimNode_CustomSpineSolver::UpdateInternal(const FAnimationUpdateContext& 
 
 	if (UPredictionAnimInstance* AnimInst = Cast<UPredictionAnimInstance>(Context.AnimInstanceProxy->GetAnimInstanceObject()))
 	{
-		//LineTraceUpperHeight = AnimInst->GetReactFootIKUpTraceHeight();
-		//LineTraceDownwardHeight = AnimInst->GetReactFootIKDownTraceHeight();
 		//PelvisBaseOffset = AnimInst->GetPelvisFinalOffset();
 	}
 

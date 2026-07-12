@@ -695,17 +695,26 @@ struct QUADRUPEDIK_API FPredictionToePathInfo
 
 public:
 	void Reset();
-	void Update(const USkeletalMeshComponent* InSkMeshComp, const FVector& InRightToeCSPos, const FVector& InLeftToeCSPos, const EPredictionMotionFoot& InFoot, const FName& InToeName);
+	void Update(
+		const USkeletalMeshComponent* InSkMeshComp, 
+		const FVector& InRightToeCSPos, 
+		const FVector& InLeftToeCSPos, 
+		const EPredictionMotionFoot& InFoot, 
+		const FName& InToeName, 
+		const float InLegLength,
+		const float LeaveHysteresisThreshold);
+
 	void SetupPath(const FName& InToeName);
 
 	bool IsInvalidState() const;
 	bool IsContacting() const;
 	bool IsLeaving() const;
 	bool IsLeaveStart() const;
-	bool IsContacStart() const;
+	bool IsContactStart() const;
 
 	void SetToeContactFloorHeight(float InHeight);
 	void SetDefaultPathDistance(float InDist);
+	void SetStrideRatio(const FVector2D InStrideRatioRange);
 
 public:
 	FVector CurToePos{FVector::ZeroVector};
@@ -722,7 +731,13 @@ private:
 	EPredictionToeFloorState ToeFloorState = EPredictionToeFloorState::None;
 	float ToeContactFloorHeight = 5.f;
 	float DefaultPathDistance = 100.f;
+	float LegLength{100.0f};
+
+	float MinStrideRatio = 0.5f;
+	float MaxStrideRatio = 5.0f;
+
 };
+
 
 USTRUCT()
 struct QUADRUPEDIK_API FFootGaitCurveInfo
