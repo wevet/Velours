@@ -49,9 +49,9 @@ struct FToePredictionDebugData
 	bool bUsedContact = false;
 	bool bUsedPastPath = false;
 	bool bUsedToeVelocity = false;
-	bool bUsedDefaultDistance = false;
 	bool bPathValid = false;
 	bool bUsedCurve = false;
+	bool bUsedDefaultDistance = false;
 
 };
 
@@ -189,18 +189,30 @@ private:
 		FVector& OutToeEndPos,
 		const FPredictionToePathInfo& InPastPath);
 
-	void CalcToeEndPosByCurve(FVector& OutToeEndPos, const float& InCurToeCurveValue);
-
 	void CalcToeEndPosByDefaultDistance(FVector& OutToeEndPos, const FPredictionToePathInfo& InPastPath);
+
+	void CalcToeEndPosByCurve(FVector& OutToeEndPos, const float& InCurToeCurveValue);
 
 	void CheckEndPosByTrace(bool& OutEndPosChanged, FVector& OutToeEndPos, const FVector& InLastToeEndPos);
 
+	void LineTracePath2_Old(bool& OutEndPosValid, TArray<FVector>& OutToePath, const FVector& InToeStartPos, const FVector& InToeEndPos);
 	void LineTracePath2(bool& OutEndPosValid, TArray<FVector>& OutToePath, const FVector& InToeStartPos, const FVector& InToeEndPos);
 
 	FVector GetToePredictivePos(const float& InMeshPosZ, const TArray<FVector>& InToePath, const FName& InToeName);
 
 	void GetToeHeightLimitByPathCurve(float& OutHeightLimit, const FVector& InToeCurPos, const TArray<FVector>& InToePath);
 
+
+	bool GetFlatHeightFromPath(
+		float& OutHeight,
+		const FVector& InCurrentPos,
+		const TArray<FVector>& InPath) const;
+
+	bool GetPelvisHeightFromPath(
+		float& OutHeight,
+		const FVector& InCurrentPos,
+		const TArray<FVector>& InPath,
+		float TransitionHalfWidth) const;
 
 	void CalcPelvisOffset2(
 		float& OutTargetMeshPosZ,
@@ -225,12 +237,21 @@ private:
 
 
 private:
+	void DebugDrawToePath(
+		const TArray<FVector>& InToePath,
+		const FVector& InToePos,
+		const FVector& InToePredictivePos,
+		FLinearColor InColor);
+
+	void DebugDrawPelvisPath();
+
 
 	void DebugDrawToePredictionDetailed(
 		const FToePredictionDebugData& DebugData,
 		const TArray<FVector>& ToePath,
 		const FLinearColor& PathColor,
 		const FString& Prefix) const;
+
 public:
 	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Debug")
 	uint8 bDrawDebug : 1;
@@ -257,11 +278,10 @@ public:
 	uint8 bEnablePastPathPredictive : 1;
 
 	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
-	uint8 bEnableDefaultDistancePredictive : 1;
-
-	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
 	uint8 bEnableToeVelocityPredictive : 1;
 
+	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
+	uint8 bEnableDefaultDistancePredictive : 1;
 
 	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|Config")
 	float DefaultToeFirstPathDistance = 200.0f;
@@ -379,6 +399,20 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Prediction Foot IK|No Curve")
 	float OwnerVelocityDirWeight = 0.3f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prediction Foot IK | Pelvis")
+	float PelvisTransitionHalfWidth = 12.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prediction Foot IK | Pelvis")
+	float PelvisFlatHeightTolerance = 2.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prediction Foot IK | Pelvis")
+	float PelvisMaxUpSpeed = 100.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prediction Foot IK | Pelvis")
+	float PelvisMaxDownSpeed = 140.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prediction Foot IK | Pelvis")
+	float PelvisBaseFollowSpeed = 5.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prediction Foot IK|Runtime Prediction")
 	float PastPathDirectionWeight = 0.35f;
@@ -414,6 +448,8 @@ public:
 	FToePredictionDebugData LeftToeDebugData;
 
 	FVector LastValidMoveDirection = FVector::ZeroVector;
+
+
 public:
 	UPROPERTY(BlueprintReadOnly, Category = "To Rig Parameter")
 	float FootIKWeight = 0.f;
@@ -473,6 +509,8 @@ private:
 
 	TArray<FVector> RightToePath;
 	TArray<FVector> LeftToePath;
+
+	EPredictionMotionFoot PelvisSourceFoot = EPredictionMotionFoot::None;
 
 private:
 	FVector MotionFootStartPos_MapByRootPos{ FVector::ZeroVector };

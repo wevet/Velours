@@ -663,7 +663,7 @@ void FAnimNode_CustomSpineSolver::UpdateInternal(const FAnimationUpdateContext& 
 
 	if (UPredictionAnimInstance* AnimInst = Cast<UPredictionAnimInstance>(Context.AnimInstanceProxy->GetAnimInstanceObject()))
 	{
-		//PelvisBaseOffset = AnimInst->GetPelvisFinalOffset();
+		PelvisBaseOffset = AnimInst->GetPelvisFinalOffset();
 	}
 
 	if (bSpineSnakeBone)
@@ -2181,7 +2181,11 @@ void FAnimNode_CustomSpineSolver::InitializeEffectorTransform(FCSPose<FCompactPo
 /// <summary>
 /// Snake IK function
 /// </summary>
-void FAnimNode_CustomSpineSolver::SnakeImpactRotation(const FComponentSpacePoseContext& Output, const int32 PointIndex, FTransform& OutputTransform, FCSPose<FCompactPose>& MeshBases)
+void FAnimNode_CustomSpineSolver::SnakeImpactRotation(
+	const FComponentSpacePoseContext& Output,
+	const int32 PointIndex, 
+	FTransform& OutputTransform, 
+	FCSPose<FCompactPose>& MeshBases)
 {
 	SCOPE_CYCLE_COUNTER(STAT_QuadrupedSpineSolver_TailImpactRotation);
 
@@ -2379,10 +2383,15 @@ void FAnimNode_CustomSpineSolver::SnakeImpactRotation(const FComponentSpacePoseC
 
 }
 
+
 /// <summary>
 /// Animal Humanoid Fabrik
 /// </summary>
-void FAnimNode_CustomSpineSolver::ImpactRotation(const FComponentSpacePoseContext& Output, const int32 PointIndex,  FTransform& OutputTransform, FCSPose<FCompactPose>& MeshBases)
+void FAnimNode_CustomSpineSolver::ImpactRotation(
+	const FComponentSpacePoseContext& Output,
+	const int32 PointIndex, 
+	FTransform& OutputTransform, 
+	FCSPose<FCompactPose>& MeshBases)
 {
 	SCOPE_CYCLE_COUNTER(STAT_QuadrupedSpineSolver_ImpactRotation);
 
@@ -3308,6 +3317,15 @@ FVector FAnimNode_CustomSpineSolver::ComputeSpineTargetLocationCS(const FCompone
 
 	const float SpineHeight = TotalSpineHeights[PointIndex];
 	float TargetZ = BaseGroundZ + SpineHeight + BaseOffset - DipOffsetZ;
+
+	if (bIsPelvisJoint)
+	{
+		if (UPredictionAnimInstance* AnimInst = Cast<UPredictionAnimInstance>(Output.AnimInstanceProxy->GetAnimInstanceObject()))
+		{
+			//TargetZ = Support.HighestFootZ + SpineHeight + BaseOffset;
+		}
+
+	}
 
 	const float MaxDip = bIsPelvisJoint ? MaxFormatedHeight : MaxFormatedDipHeightChest;
 	const float OriginZ = Support.ParentSpineCS.Z + SpineHeight + BaseOffset;

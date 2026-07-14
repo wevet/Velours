@@ -138,6 +138,14 @@ void FPredictionToePathInfo::Reset()
 	IsPathValid = false;
 	IsPathStarted = false;
 	ToeFloorState = EPredictionToeFloorState::None;
+
+	CurToeCSPos = FVector::ZeroVector;
+	CurToePos = FVector::ZeroVector;
+	LeaveFloorPos = FVector::ZeroVector;
+	ContactFloorPos = FVector::ZeroVector;
+	PathTranslation = FVector::ZeroVector;
+
+	DefaultPathDistance = 0.f;
 }
 
 
@@ -151,7 +159,6 @@ void FPredictionToePathInfo::Update(
 	const float LeaveHysteresisThreshold)
 {
 	CurToeCSPos = InFoot == EPredictionMotionFoot::Right ? InRightToeCSPos : InLeftToeCSPos;
-	LegLength = InLegLength;
 
 	if (CurToeCSPos.IsNearlyZero())
 	{
@@ -159,47 +166,23 @@ void FPredictionToePathInfo::Update(
 		return;
 	}
 
-	// @NOTE
-	// 相対座標にしないとlostするのでCS座標比較
 	CurToePos = InSkMeshComp->GetComponentTransform().ToMatrixWithScale().TransformPosition(CurToeCSPos);
 
-	const bool bWasContacting = IsContacting();
-	const bool bWasLeaving = IsLeaving();
+	// @NOTE
+	// 相対座標にしないとlostするのでCS座標比較
+	EPredictionToeFloorState LocalToeFloorState = CurToeCSPos.Z < ToeContactFloorHeight ?
+		EPredictionToeFloorState::Contacting : EPredictionToeFloorState::Leaving;
 
-	EPredictionToeFloorState LocalToeFloorState;
-	if (bWasContacting)
+	if (IsContacting() && LocalToeFloorState == EPredictionToeFloorState::Leaving)
 	{
-		// 接地中は高いしきい値を超えないと離地にしない
-		LocalToeFloorState = (CurToeCSPos.Z > ToeContactFloorHeight + LeaveHysteresisThreshold)
-			? EPredictionToeFloorState::Leaving
-			: EPredictionToeFloorState::Contacting;
-	}
-	else if (bWasLeaving)
-	{
-		// 空中は低いしきい値を下回らないと接地にしない
-		LocalToeFloorState = (CurToeCSPos.Z < ToeContactFloorHeight)
-			? EPredictionToeFloorState::Contacting
-			: EPredictionToeFloorState::Leaving;
-	}
-	else // None（初回）
-	{
-		LocalToeFloorState = (CurToeCSPos.Z - ToeContactFloorHeight <= 0.f)
-			? EPredictionToeFloorState::Contacting
-			: EPredictionToeFloorState::Leaving;
-	}
-
-	// --- #1 エッジ検出の復活 ---
-	if (bWasContacting && LocalToeFloorState == EPredictionToeFloorState::Leaving)
-	{
-		LeaveFloorPos = CurToePos; 
+		LeaveFloorPos = CurToePos;
 		LocalToeFloorState = EPredictionToeFloorState::LeaveStart;
-		UE_LOG(LogQuadrupedIK, Verbose, TEXT("EPredictionToeFloorState::LeaveStart"));
 	}
-	else if (bWasLeaving && LocalToeFloorState == EPredictionToeFloorState::Contacting)
+
+	if (IsLeaving() && LocalToeFloorState == EPredictionToeFloorState::Contacting)
 	{
-		ContactFloorPos = CurToePos; 
+		ContactFloorPos = CurToePos;
 		LocalToeFloorState = EPredictionToeFloorState::ContactStart;
-		UE_LOG(LogQuadrupedIK, Verbose, TEXT("EPredictionToeFloorState::ContactStart"));
 	}
 
 	ToeFloorState = LocalToeFloorState;
@@ -215,11 +198,12 @@ void FPredictionToePathInfo::SetupPath(const FName& InToeName)
 
 	if (IsContactStart())
 	{
+
 		const FVector ToePathTranslation = ContactFloorPos - LeaveFloorPos;
 		const float TranslationSizeSquared = ToePathTranslation.SizeSquared();
 
 		// 例: 0.4 → 約36cm
-		const float MinStride = LegLength * MinStrideRatio; 
+		const float MinStride = LegLength * MinStrideRatio;
 		// 例: 5.0 → 約450cm
 		const float MaxStride = LegLength * MaxStrideRatio;
 
@@ -238,10 +222,7 @@ void FPredictionToePathInfo::SetupPath(const FName& InToeName)
 			UE_LOG(LogQuadrupedIK, Verbose, TEXT("Not Less TranslationSizeSquared : %.2f"), TranslationSizeSquared);
 		}
 	}
-	else
-	{
-		//UE_LOG(LogQuadrupedIK, Verbose, TEXT("Not IsContactStart"));
-	}
+
 
 }
 
@@ -284,6 +265,11 @@ void FPredictionToePathInfo::SetToeContactFloorHeight(float InHeight)
 void FPredictionToePathInfo::SetDefaultPathDistance(float InDist)
 {
 	DefaultPathDistance = InDist;
+}
+
+float FPredictionToePathInfo::GetDetaultPathDistance() const
+{
+	return DefaultPathDistance;
 }
 #pragma endregion
 
