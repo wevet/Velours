@@ -502,6 +502,7 @@ private:
 	FVector RightToeCSPos;
 	FVector LeftToeCSPos;
 	bool ValidPredictiveWeight = false;
+	bool bIsTraceComplex{true};
 
 private:
 	FPredictionToePathInfo RightToePathInfo;

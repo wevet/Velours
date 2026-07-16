@@ -715,7 +715,7 @@ public:
 	void SetToeContactFloorHeight(float InHeight);
 	void SetDefaultPathDistance(float InDist);
 	void SetStrideRatio(const FVector2D InStrideRatioRange);
-	float GetDetaultPathDistance() const;
+	float GetDefaultPathDistance() const;
 
 public:
 	FVector CurToePos{FVector::ZeroVector};

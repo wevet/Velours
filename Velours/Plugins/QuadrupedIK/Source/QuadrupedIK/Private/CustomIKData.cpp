@@ -267,7 +267,7 @@ void FPredictionToePathInfo::SetDefaultPathDistance(float InDist)
 	DefaultPathDistance = InDist;
 }
 
-float FPredictionToePathInfo::GetDetaultPathDistance() const
+float FPredictionToePathInfo::GetDefaultPathDistance() const
 {
 	return DefaultPathDistance;
 }
