@@ -78,6 +78,8 @@ Content/PCC_Icons/*
 Content/ProceduralBuildingGenerator/*
 Content/ProceduralCityCreator/*
 Content/UltraDynamicSky/*
+Content/CitySampleBuildings/*
+
 
 # ignore developer
 Content/Developers/*

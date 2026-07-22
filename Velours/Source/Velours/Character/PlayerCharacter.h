@@ -43,13 +43,13 @@ protected:
 
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<class UWvSpringArmComponent> CameraBoom;
+	TObjectPtr<class UWvSpringArmComponent> CameraBoom{ nullptr };
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<class UCameraComponent> TPSCamera;
+	TObjectPtr<class UCameraComponent> TPSCamera{ nullptr };
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<class UQTEActionComponent> QTEActionComponent;
+	TObjectPtr<class UQTEActionComponent> QTEActionComponent{ nullptr };
 
 
 public:
