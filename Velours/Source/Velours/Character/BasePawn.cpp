@@ -149,6 +149,8 @@ void ABasePawn::BeginPlay()
 {
 	Super::BeginPlay();
 
+	LocomotionComponent->OnOverlayChangeDelegate.AddUniqueDynamic(this, &ThisClass::OverlayStateChange_Callback);
+
 	RequestAsyncLoad();
 
 }
@@ -174,6 +176,7 @@ void ABasePawn::EndPlay(const EEndPlayReason::Type EndPlayReason)
 		CharacterMover->OnMovementModeChanged.RemoveDynamic(this, &ABasePawn::OnMovementModeChanged_Callback);
 	}
 
+	LocomotionComponent->OnOverlayChangeDelegate.RemoveDynamic(this, &ThisClass::OverlayStateChange_Callback);
 
 	if (IsValid(AbilitySystemComponent))
 	{
@@ -900,14 +903,29 @@ bool ABasePawn::IsVehicleDriving() const
 #pragma endregion
 
 
+void ABasePawn::ApplyOverlayStateChangeFromCombat(const ELSOverlayState CurrentOverlay)
+{
+	if (IsValid(LocomotionComponent))
+	{
+		LocomotionComponent->SetOverlayState(CurrentOverlay);
+	}
+}
+
 /// <summary>
 /// Animation overlay change from chooser table
 /// </summary>
 /// <param name="CurrentOverlay"></param>
 const bool ABasePawn::OverlayStateChange(const ELSOverlayState CurrentOverlay)
 {
+
+	auto SkelMesh = GetWvSkeletalMeshComponent();
+	if (!IsValid(SkelMesh))
+	{
+		return false;
+	}
+
 	constexpr uint8 ELSOverlayState_Min = static_cast<uint8>(ELSOverlayState::None);
-	constexpr uint8 ELSOverlayState_Max = static_cast<uint8>(ELSOverlayState::Mass);
+	constexpr uint8 ELSOverlayState_Max = static_cast<uint8>(ELSOverlayState::Max);
 
 
 	uint8 Raw = static_cast<uint8>(CurrentOverlay);
@@ -926,13 +944,13 @@ const bool ABasePawn::OverlayStateChange(const ELSOverlayState CurrentOverlay)
 	OverlayChangeDelegate.Broadcast(ClampedOverlay);
 	bIsOverlayChange = true;
 
-#if false
+
 	if (const UClass* OverlayAnimClass = UWvCommonUtils::FindClassInChooserTable(this, OverlayAnimationTable))
 	{
 		if (OverlayAnimClass->IsChildOf(UAnimInstance::StaticClass()))
 		{
 			TSubclassOf<UAnimInstance> Subclass = const_cast<UClass*>(OverlayAnimClass);
-			GetWvSkeletalMeshComponent()->LinkAnimClassLayers(Subclass);
+			SkelMesh->LinkAnimClassLayers(Subclass);
 			OverlayChangeDelegate.Broadcast(ClampedOverlay);
 			bIsOverlayChange = true;
 		}
@@ -946,7 +964,7 @@ const bool ABasePawn::OverlayStateChange(const ELSOverlayState CurrentOverlay)
 		const FString CategoryName = *FString::Format(TEXT("{0}"), { *GETENUMSTRING("/Script/Redemption.ELSOverlayState", SelectableOverlayState) });
 		UE_LOG(LogBaseCharacter, Warning, TEXT("OverlayAnimClass not found:[%s] FindClassInChooserTable: [%s]"), *CategoryName, *FString(__FUNCTION__));
 	}
-#endif
+
 
 
 	if (!bIsOverlayChange)
@@ -956,6 +974,44 @@ const bool ABasePawn::OverlayStateChange(const ELSOverlayState CurrentOverlay)
 	}
 
 	return bIsOverlayChange;
+}
+
+
+void ABasePawn::OverlayStateChange_Callback(const ELSOverlayState PrevOverlay, const ELSOverlayState CurrentOverlay)
+{
+
+	if (!IsValid(ItemInventoryComponent))
+	{
+		return;
+	}
+
+	bool bCanAttack = false;
+	const auto WeaponType = ItemInventoryComponent->ConvertWeaponState(CurrentOverlay, bCanAttack);
+	const bool bResult = ItemInventoryComponent->ChangeAttackWeapon(WeaponType);
+
+	if (bResult)
+	{
+		OverlayStateChange(CurrentOverlay);
+	}
+}
+
+
+void ABasePawn::OnTargetLockedOn_Callback(AActor* LookOnTarget, UHitTargetComponent* TargetComponent)
+{
+	if (IsValid(LocomotionComponent))
+	{
+		LocomotionComponent->SetLookAimTarget(true, LookOnTarget);
+	}
+
+}
+
+void ABasePawn::OnTargetLockedOff_Callback(AActor* LookOnTarget, UHitTargetComponent* TargetComponent)
+{
+	if (IsValid(LocomotionComponent))
+	{
+		LocomotionComponent->SetLookAimTarget(false, nullptr);
+	}
+
 }
 
 

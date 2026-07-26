@@ -179,7 +179,7 @@ FVector2D AWeaponBaseActor::GetAttackRange() const
 	return PawnAttackParam.AttackRange;
 }
 
-FPawnAttackParam AWeaponBaseActor::GetWeaponAttackInfo() const
+const FPawnAttackParam& AWeaponBaseActor::GetWeaponAttackInfo() const
 {
 	return PawnAttackParam;
 }

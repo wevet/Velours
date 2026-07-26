@@ -4,6 +4,7 @@
 #include "InventoryComponent.h"
 #include "WeaknessComponent.h"
 #include "HitTargetComponent.h"
+#include "LocomotionComponent.h"
 
 #include "Misc/WvCommonUtils.h"
 #include "Velours.h"
@@ -200,10 +201,17 @@ void UCombatComponent::ShowChainWidgetComponent(const bool NewVisibility)
 
 
 #pragma region AbilityDamage
-bool UCombatComponent::AbilityDamageBoxTrace(class UWvAbilityBase* Ability, const int32 EffectGroupIndex, const FVector Start, const FVector End, FVector HalfSize, const FRotator Orientation, TArray<AActor*>& ActorsToIgnore)
+bool UCombatComponent::AbilityDamageBoxTrace(
+	class UWvAbilityBase* Ability,
+	const int32 EffectGroupIndex, 
+	const FVector& Start,
+	const FVector& End,
+	const FVector& BoxExtent,
+	const FRotator& Orientation, 
+	TArray<AActor*>& ActorsToIgnore)
 {
 	TArray<FWvBattleDamageAttackTargetInfo> HitTargetInfos;
-	BoxTraceMulti(HitTargetInfos, Start, End, HalfSize, Orientation, ActorsToIgnore);
+	BoxTraceMulti(HitTargetInfos, Start, End, BoxExtent, Orientation, ActorsToIgnore);
 
 	if (HitTargetInfos.IsEmpty())
 	{
@@ -218,7 +226,15 @@ bool UCombatComponent::AbilityDamageBoxTrace(class UWvAbilityBase* Ability, cons
 	return true;
 }
 
-bool UCombatComponent::AbilityDamageCapsuleTrace(class UWvAbilityBase* Ability, const int32 EffectGroupIndex, const FVector Start, const FVector End, const float Radius, const float HalfHeight, const FQuat CapsuleQuat, TArray<AActor*>& ActorsToIgnore)
+bool UCombatComponent::AbilityDamageCapsuleTrace(
+	class UWvAbilityBase* Ability, 
+	const int32 EffectGroupIndex, 
+	const FVector& Start,
+	const FVector& End,
+	const float Radius, 
+	const float HalfHeight,
+	const FQuat& CapsuleQuat,
+	TArray<AActor*>& ActorsToIgnore)
 {
 	TArray<FWvBattleDamageAttackTargetInfo> HitTargetInfos;
 	CapsuleTraceMulti(HitTargetInfos, Start, End, Radius, HalfHeight, CapsuleQuat, ActorsToIgnore);
@@ -236,7 +252,13 @@ bool UCombatComponent::AbilityDamageCapsuleTrace(class UWvAbilityBase* Ability, 
 	return true;
 }
 
-void UCombatComponent::BoxTraceMulti(TArray<FWvBattleDamageAttackTargetInfo>& HitTargetInfos, const FVector Start, const FVector End, const FVector HalfSize, const FRotator Orientation, const TArray<AActor*>& ActorsToIgnore)
+void UCombatComponent::BoxTraceMulti(
+	TArray<FWvBattleDamageAttackTargetInfo>& HitTargetInfos,
+	const FVector& Start,
+	const FVector& End,
+	const FVector& HalfSize,
+	const FRotator& Orientation,
+	const TArray<AActor*>& ActorsToIgnore)
 {
 	TArray<FHitResult> HitResults;
 
@@ -251,16 +273,31 @@ void UCombatComponent::BoxTraceMulti(TArray<FWvBattleDamageAttackTargetInfo>& Hi
 
 	UKismetSystemLibrary::BoxTraceMulti(
 		GetWorld(),
-		Start, End, HalfSize, Orientation,
-		ASC_GLOBAL()->WeaponTraceChannel, false, ActorsToIgnore,
+		Start, 
+		End, 
+		HalfSize,
+		Orientation,
+		ASC_GLOBAL()->WeaponTraceChannel,
+		false,
+		ActorsToIgnore,
 		bIsDebugTrace ? EDrawDebugTrace::ForDuration : EDrawDebugTrace::None,
-		HitResults, true,
-		FLinearColor::Red, FLinearColor::Green, DrawTime);
+		HitResults, 
+		true,
+		FLinearColor::Red, 
+		FLinearColor::Green,
+		DrawTime);
 
 	HitResultEnemyFilter(HitResults, HitTargetInfos);
 }
 
-void UCombatComponent::CapsuleTraceMulti(TArray<FWvBattleDamageAttackTargetInfo>& HitTargetInfos, const FVector Start, const FVector End, const float Radius, const float HalfHeight, const FQuat CapsuleFquat, const TArray<AActor*>& ActorsToIgnore)
+void UCombatComponent::CapsuleTraceMulti(
+	TArray<FWvBattleDamageAttackTargetInfo>& HitTargetInfos,
+	const FVector& Start,
+	const FVector& End,
+	const float Radius, 
+	const float HalfHeight, 
+	const FQuat& CapsuleFquat,
+	const TArray<AActor*>& ActorsToIgnore)
 {
 	TArray<FHitResult> HitResults;
 	ECollisionChannel CollisionChannel = UEngineTypes::ConvertToCollisionChannel(ASC_GLOBAL()->WeaponTraceChannel);
@@ -287,7 +324,19 @@ void UCombatComponent::CapsuleTraceMulti(TArray<FWvBattleDamageAttackTargetInfo>
 	if (bIsDebugTrace)
 	{
 		const int32 DrawIndex = (int32)EDrawDebugTrace::ForDuration;
-		UWvAbilitySystemBlueprintFunctionLibrary::DrawDebugCapsuleTraceMulti(GetWorld(), Start, End, CapsuleFquat, Radius, HalfHeight, DrawIndex, HitResults.Num() > 0, HitResults, FLinearColor::Red, FLinearColor::Green, DrawTime);
+		UWvAbilitySystemBlueprintFunctionLibrary::DrawDebugCapsuleTraceMulti(
+			GetWorld(), 
+			Start,
+			End,
+			CapsuleFquat,
+			Radius,
+			HalfHeight, 
+			DrawIndex, 
+			HitResults.Num() > 0, 
+			HitResults,
+			FLinearColor::Red,
+			FLinearColor::Green,
+			DrawTime);
 	}
 #endif
 
@@ -387,7 +436,12 @@ void UCombatComponent::HitResultEnemyFilter(TArray<FHitResult>& Hits, TArray<FWv
 /// <summary>
 /// Call WvAT_BulletDamage
 /// </summary>
-const bool UCombatComponent::LineOfSightTraceOuter(class UWvAbilityBase* Ability, const int32 WeaponID, const int32 EffectGroupIndex, TArray<FHitResult>& Hits, const FVector SourceLocation)
+const bool UCombatComponent::LineOfSightTraceOuter(
+	class UWvAbilityBase* Ability,
+	const int32 WeaponID,
+	const int32 EffectGroupIndex,
+	TArray<FHitResult>& Hits,
+	const FVector SourceLocation)
 {
 	LineOfSightTraceOuterEnvironments(Ability, EffectGroupIndex, Hits, SourceLocation);
 	return BulletTraceAttackToAbilitySystemComponent(Ability, WeaponID, EffectGroupIndex, Hits, SourceLocation);
@@ -397,7 +451,11 @@ const bool UCombatComponent::LineOfSightTraceOuter(class UWvAbilityBase* Ability
 /// HitBy Environments
 /// </summary>
 /// <returns></returns>
-const bool UCombatComponent::LineOfSightTraceOuterEnvironments(class UWvAbilityBase* Ability, const int32 EffectGroupIndex, const TArray<FHitResult>& HitResults, const FVector SourceLocation)
+const bool UCombatComponent::LineOfSightTraceOuterEnvironments(
+	class UWvAbilityBase* Ability, 
+	const int32 EffectGroupIndex, 
+	const TArray<FHitResult>& HitResults, 
+	const FVector SourceLocation)
 {
 	for (const FHitResult& HitResult : HitResults)
 	{
@@ -414,7 +472,11 @@ const bool UCombatComponent::LineOfSightTraceOuterEnvironments(class UWvAbilityB
 /// HitBy Environment
 /// </summary>
 /// <returns></returns>
-const bool UCombatComponent::LineOfSightTraceOuterEnvironment(class UWvAbilityBase* Ability, const int32 EffectGroupIndex, const FHitResult& HitResult, const FVector SourceLocation)
+const bool UCombatComponent::LineOfSightTraceOuterEnvironment(
+	class UWvAbilityBase* Ability, 
+	const int32 EffectGroupIndex, 
+	const FHitResult& HitResult, 
+	const FVector SourceLocation)
 {
 	if (!IsValid(HitResult.GetActor()))
 	{
@@ -463,7 +525,12 @@ const bool UCombatComponent::HasEnvironmentFilterClass(const FHitResult& HitResu
 /// <summary>
 /// Attack from bullet infos
 /// </summary>
-const bool UCombatComponent::BulletTraceAttackToAbilitySystemComponent(class UWvAbilityBase* Ability, const int32 WeaponID, const int32 EffectGroupIndex, TArray<FHitResult>& Hits, const FVector SourceLocation)
+const bool UCombatComponent::BulletTraceAttackToAbilitySystemComponent(
+	class UWvAbilityBase* Ability, 
+	const int32 WeaponID, 
+	const int32 EffectGroupIndex, 
+	TArray<FHitResult>& Hits, 
+	const FVector SourceLocation)
 {
 	TArray<FWvBattleDamageAttackTargetInfo> HitTargetInfos;
 	HitResultEnemyFilter(Hits, HitTargetInfos);
@@ -490,7 +557,11 @@ const bool UCombatComponent::BulletTraceAttackToAbilitySystemComponent(class UWv
 	return true;
 }
 
-void UCombatComponent::AbilityTraceAttackToASC(class UWvAbilityBase* Ability, const int32 EffectGroupIndex, TArray<FWvBattleDamageAttackTargetInfo> HitTargetInfos, const FVector SourceLocation)
+void UCombatComponent::AbilityTraceAttackToASC(
+	class UWvAbilityBase* Ability,
+	const int32 EffectGroupIndex, 
+	TArray<FWvBattleDamageAttackTargetInfo> HitTargetInfos,
+	const FVector& SourceLocation)
 {
 	FWvBattleDamageAttackSourceInfo SourceInfo = FWvBattleDamageAttackSourceInfo();
 	SourceInfo.SourceType = EWvBattleDamageAttackSourceType::BasicMelee;
@@ -507,7 +578,12 @@ void UCombatComponent::AbilityTraceAttackToASC(class UWvAbilityBase* Ability, co
 	AttackToASC(SourceInfo, HitTargetInfos, EffectDA, EffectGroupIndex, SourceLocation);
 }
 
-void UCombatComponent::AttackToASC(const FWvBattleDamageAttackSourceInfo SourceInfo, TArray<FWvBattleDamageAttackTargetInfo> HitInfos, class UWvAbilityEffectDataAsset* EffectDA, const int32 EffectGroupIndex, const FVector SourceLocation)
+void UCombatComponent::AttackToASC(
+	const FWvBattleDamageAttackSourceInfo SourceInfo,
+	TArray<FWvBattleDamageAttackTargetInfo>& HitInfos,
+	class UWvAbilityEffectDataAsset* EffectDA, 
+	const int32 EffectGroupIndex, 
+	const FVector& SourceLocation)
 {
 	if (!ASC.IsValid() || !IsValid(EffectDA))
 	{
@@ -804,7 +880,7 @@ void UCombatComponent::UnEquipWeapon()
 
 void UCombatComponent::EquipPistol()
 {
-	Modify_Weapon(ELSOverlayState::Pistol2H);
+	Modify_Weapon(ELSOverlayState::Pistol);
 }
 
 void UCombatComponent::EquipRifle()
@@ -819,11 +895,11 @@ void UCombatComponent::EquipKnife()
 
 void UCombatComponent::SetAiming(const bool InAiming)
 {
-	//ULocomotionComponent* Comp = Character->GetLocomotionComponent();
-	//if (Comp)
-	//{
-	//	Comp->SetLSAiming(InAiming);
-	//}
+	ULocomotionComponent* Comp = Character->GetLocomotionComponent();
+	if (Comp)
+	{
+		Comp->SetAiming(InAiming);
+	}
 }
 
 void UCombatComponent::Modify_Weapon(const ELSOverlayState LSOverlayState)
@@ -837,10 +913,11 @@ void UCombatComponent::Modify_Weapon(const ELSOverlayState LSOverlayState)
 
 		if (bResult)
 		{
-			//Character->OverlayStateChange(LSOverlayState);
+			Character->ApplyOverlayStateChangeFromCombat(LSOverlayState);
 		}
 	}
 }
+
 
 void UCombatComponent::EquipAvailableWeapon()
 {
@@ -856,7 +933,7 @@ void UCombatComponent::EquipAvailableWeapon()
 
 			if (bResult)
 			{
-				//Character->OverlayStateChange(LSOverlayState);
+				Character->ApplyOverlayStateChangeFromCombat(LSOverlayState);
 			}
 		}
 	}
@@ -877,7 +954,7 @@ void UCombatComponent::EquipAvailableWeaponToDistance(const float Threshold)
 
 			if (bResult)
 			{
-				//Character->OverlayStateChange(LSOverlayState);
+				Character->ApplyOverlayStateChangeFromCombat(LSOverlayState);
 			}
 		}
 	}
@@ -958,14 +1035,26 @@ void UCombatComponent::RemoveAllFollowers()
 		//}
 		//Follower.Reset();
 	}
+
 	Followers.Reset(0);
 }
 
-const FVector UCombatComponent::GetFormationPoint(const APawn* InPawn)
+const FVector UCombatComponent::GetSquadPoint(const APawn* InPawn)
 {
-	if (!Character.IsValid() || !IsValid(InPawn))
+
+	if (!ensureMsgf(Character.IsValid(), TEXT("[%hs] Character is invalid."), __FUNCTION__))
 	{
-		return Character.IsValid() ? Character->GetActorLocation() : FVector::ZeroVector;
+		return FVector::ZeroVector;
+	}
+
+	if (!ensureMsgf(IsValid(InPawn), TEXT("[%hs] InPawn is invalid. Owner: %s"), __FUNCTION__, *GetNameSafe(Character.Get())))
+	{
+		return Character->GetActorLocation();
+	}
+
+	if (Followers.IsEmpty())
+	{
+		return Character->GetActorLocation();
 	}
 
 	Followers.RemoveAll([](const TWeakObjectPtr<APawn>& Pawn)
@@ -973,11 +1062,8 @@ const FVector UCombatComponent::GetFormationPoint(const APawn* InPawn)
 			return !Pawn.IsValid();
 		});
 
+
 	const int32 Num = Followers.Num();
-	if (Num <= 0)
-	{
-		return Character->GetActorLocation();
-	}
 
 	int32 SelectIndex = INDEX_NONE;
 	for (int32 Index = 0; Index < Num; ++Index)
@@ -1014,7 +1100,7 @@ bool UCombatComponent::CanFollow() const
 #pragma endregion
 
 
-FPawnAttackParam UCombatComponent::GetWeaponAttackInfo() const
+const FPawnAttackParam& UCombatComponent::GetWeaponAttackInfo() const
 {
 	const auto Inventory = Character->GetInventoryComponent();
 	return Inventory->GetEquipWeapon()->GetWeaponAttackInfo();

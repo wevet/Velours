@@ -493,32 +493,6 @@ void APlayerCharacter::OnDoubleClickInputEventTrigger_Callback(const FGameplayTa
 	UE_LOG(LogTemp, Warning, TEXT("[%s]"), *FString(__FUNCTION__));
 }
 
-// callback
-void APlayerCharacter::OverlayStateChange_Callback(const ELSOverlayState PrevOverlay, const ELSOverlayState CurrentOverlay)
-{
-	if (!IsValid(ItemInventoryComponent))
-	{
-		return;
-	}
-
-	bool bCanAttack = false;
-	const auto WeaponType = ItemInventoryComponent->ConvertWeaponState(CurrentOverlay, bCanAttack);
-	const bool bResult = ItemInventoryComponent->ChangeAttackWeapon(WeaponType);
-
-	if (bResult)
-	{
-		//Super::OverlayStateChange(CurrentOverlay);
-	}
-
-}
-
-void APlayerCharacter::OnTargetLockedOn_Callback(AActor* LookOnTarget, UHitTargetComponent* TargetComponent)
-{
-}
-
-void APlayerCharacter::OnTargetLockedOff_Callback(AActor* LookOnTarget, UHitTargetComponent* TargetComponent)
-{
-}
 
 void APlayerCharacter::OnQTEBegin_Callback()
 {

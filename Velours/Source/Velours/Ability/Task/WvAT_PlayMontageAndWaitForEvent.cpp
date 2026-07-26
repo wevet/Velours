@@ -36,7 +36,9 @@ void UWvAT_PlayMontageAndWaitForEvent::OnMontageBlendingOut(UAnimMontage* Montag
 			// Reset AnimRootMotionTranslationScale	
 			ABasePawn* Character = Cast<ABasePawn>(GetAvatarActor());
 
-			if (Character && (Character->GetLocalRole() == ROLE_Authority || (Character->GetLocalRole() == ROLE_AutonomousProxy && Ability->GetNetExecutionPolicy() == EGameplayAbilityNetExecutionPolicy::LocalPredicted)))
+			if (Character && (Character->GetLocalRole() == ROLE_Authority 
+				|| (Character->GetLocalRole() == ROLE_AutonomousProxy 
+					&& Ability->GetNetExecutionPolicy() == EGameplayAbilityNetExecutionPolicy::LocalPredicted)))
 			{
 				Character->SetAnimRootMotionTranslationScale(1.f);
 			}

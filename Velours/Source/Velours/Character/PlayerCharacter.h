@@ -8,7 +8,6 @@
 #include "PlayerCharacter.generated.h"
 
 class UWvSpringArmComponent;
-class UHitTargetComponent;
 class UQTEActionComponent;
 class AWvPlayerController;
 
@@ -110,15 +109,6 @@ private:
 
 	UFUNCTION()
 	void OnDoubleClickInputEventTrigger_Callback(const FGameplayTag Tag, const bool bIsPress);
-
-	UFUNCTION()
-	void OverlayStateChange_Callback(const ELSOverlayState PrevOverlay, const ELSOverlayState CurrentOverlay);
-
-	UFUNCTION()
-	void OnTargetLockedOn_Callback(AActor* LookOnTarget, UHitTargetComponent* TargetComponent);
-
-	UFUNCTION()
-	void OnTargetLockedOff_Callback(AActor* LookOnTarget, UHitTargetComponent* TargetComponent);
 
 	UFUNCTION()
 	void OnQTEBegin_Callback();

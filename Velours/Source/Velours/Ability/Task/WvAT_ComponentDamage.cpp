@@ -161,10 +161,23 @@ void UWvAT_ComponentDamage::TempCapsuleExecute(const FTransform BoneTransform, U
 	const FQuat BoneRotation = BoneTransform.GetRotation();
 	const FQuat Rotation = BoneRotation * CapsuleRotation;
 	const int32 CurEffectGroupIndex = EffectGroupIndexs.IsValidIndex(EffectGroupIndex) ? EffectGroupIndexs[EffectGroupIndex] : 0;
-	CombatComponent->AbilityDamageCapsuleTrace(WvAbility, CurEffectGroupIndex, StartPosition, EndPosition, CapsuleComp->GetUnscaledCapsuleRadius(), CapsuleComp->GetUnscaledCapsuleHalfHeight(), Rotation, ActorsToIgnore);
+
+	CombatComponent->AbilityDamageCapsuleTrace(
+		WvAbility,
+		CurEffectGroupIndex,
+		StartPosition, 
+		EndPosition, 
+		CapsuleComp->GetUnscaledCapsuleRadius(), 
+		CapsuleComp->GetUnscaledCapsuleHalfHeight(), 
+		Rotation, 
+		ActorsToIgnore);
 }
 
-void UWvAT_ComponentDamage::TempBoxExecute(const FTransform BoneTransform, UBoxComponent* BoxComp, const int32 EffectGroupIndex, const int32 EffectCompIndex)
+void UWvAT_ComponentDamage::TempBoxExecute(
+	const FTransform BoneTransform, 
+	UBoxComponent* BoxComp, 
+	const int32 EffectGroupIndex, 
+	const int32 EffectCompIndex)
 {
 	if (!CombatComponent)
 	{
@@ -177,7 +190,17 @@ void UWvAT_ComponentDamage::TempBoxExecute(const FTransform BoneTransform, UBoxC
 	const FQuat BoneRotation = BoneTransform.GetRotation();
 	const FQuat Rotation = BoneRotation * CapsuleRotation;
 	const int32 CurEffectGroupIndex = EffectGroupIndexs.IsValidIndex(EffectGroupIndex) ? EffectGroupIndexs[EffectGroupIndex] : 0;
-	CombatComponent->AbilityDamageBoxTrace(WvAbility, CurEffectGroupIndex, StartPosition, EndPosition, BoxComp->GetUnscaledBoxExtent(), Rotation.Rotator(), ActorsToIgnore);
+
+	const FVector BoxExtent = BoxComp->GetUnscaledBoxExtent();
+
+	CombatComponent->AbilityDamageBoxTrace(
+		WvAbility,
+		CurEffectGroupIndex, 
+		StartPosition,
+		EndPosition, 
+		BoxExtent,
+		Rotation.Rotator(), 
+		ActorsToIgnore);
 }
 
 

@@ -115,8 +115,7 @@ void UCombatUIController::OnOverlayChange_Callback(const ELSOverlayState Current
 
 	switch (CurrentOverlay)
 	{
-	case ELSOverlayState::Pistol1H:
-	case ELSOverlayState::Pistol2H:
+	case ELSOverlayState::Pistol:
 	case ELSOverlayState::Rifle:
 		bCanShowWeapon = true;
 		break;

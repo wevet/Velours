@@ -60,8 +60,10 @@ void UWeaponWindow::RendererAmmos(const AWeaponBaseActor* InWeapon)
 		return;
 	}
 
-	CurrentAmmoText->SetText(FText::FromString(FString::FromInt(InWeapon->GetWeaponAttackInfo().CurrentAmmo)));
-	MaxAmmoText->SetText(FText::FromString(FString::FromInt(InWeapon->GetWeaponAttackInfo().MaxAmmo)));
+	const FPawnAttackParam& WeaponItemInfo = InWeapon->GetWeaponAttackInfo();
+
+	CurrentAmmoText->SetText(FText::FromString(FString::FromInt(WeaponItemInfo.CurrentAmmo)));
+	MaxAmmoText->SetText(FText::FromString(FString::FromInt(WeaponItemInfo.MaxAmmo)));
 }
 
 void UWeaponWindow::RendererImage(const AWeaponBaseActor* InWeapon)

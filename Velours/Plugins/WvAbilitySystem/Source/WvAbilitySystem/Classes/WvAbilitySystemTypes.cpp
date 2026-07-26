@@ -116,9 +116,14 @@ UE_DEFINE_GAMEPLAY_TAG(TAG_Weapon_Finisher_Ignore, "Weapon.Finisher.Ignore");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Weapon_Melee_Default, "Weapon.Melee.Default");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Weapon_Melee_Knife, "Weapon.Melee.Knife");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Weapon_Melee_Pistol, "Weapon.Melee.Pistol");
-UE_DEFINE_GAMEPLAY_TAG(TAG_Weapon_Melee_Pistol_AmmoEmpty, "Weapon.Melee.Pistol.Ammo.Empty");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Weapon_Melee_Rifle, "Weapon.Melee.Rifle");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Weapon_Melee_SniperRifle, "Weapon.Melee.SniperRifle");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Weapon_Melee_ShotGun, "Weapon.Melee.ShotGun");
+
+UE_DEFINE_GAMEPLAY_TAG(TAG_Weapon_Melee_Pistol_AmmoEmpty, "Weapon.Melee.Pistol.Ammo.Empty");
 UE_DEFINE_GAMEPLAY_TAG(TAG_Weapon_Melee_Rifle_AmmoEmpty, "Weapon.Melee.Rifle.Ammo.Empty");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Weapon_Melee_SniperRifle_AmmoEmpty, "Weapon.Melee.SniperRifle.Ammo.Empty");
+UE_DEFINE_GAMEPLAY_TAG(TAG_Weapon_Melee_ShotGun_AmmoEmpty, "Weapon.Melee.ShotGun.Ammo.Empty");
 
 // bullet weapon state
 UE_DEFINE_GAMEPLAY_TAG(TAG_Weapon_Gun_Reload, "Weapon.Gun.Reload");

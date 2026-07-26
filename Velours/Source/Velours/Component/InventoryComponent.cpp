@@ -56,13 +56,18 @@ const EAttackWeaponState UInventoryComponent::ConvertWeaponState(const ELSOverla
 	OutbCanAttack = true;
 	switch (InLSOverlayState)
 	{
-	case ELSOverlayState::Pistol2H:
-	case ELSOverlayState::Pistol1H:
+	case ELSOverlayState::Pistol:
 		return EAttackWeaponState::Gun;
 	case ELSOverlayState::Rifle:
 		return EAttackWeaponState::Rifle;
 	case ELSOverlayState::Knife:
 		return EAttackWeaponState::Knife;
+	case ELSOverlayState::ShotGun:
+		return EAttackWeaponState::ShotGun;
+	case ELSOverlayState::SniperRifle:
+		return EAttackWeaponState::SniperRifle;
+	case ELSOverlayState::Throw:
+		return EAttackWeaponState::Throw;
 	case ELSOverlayState::Binoculars:
 		OutbCanAttack = false;
 		return EAttackWeaponState::Other;
@@ -278,7 +283,7 @@ bool UInventoryComponent::CanThrowableWeapon() const
 
 	switch (WeaponType)
 	{
-	case EAttackWeaponState::Bomb:
+	case EAttackWeaponState::Throw:
 		return true;
 	}
 	return false;

@@ -44,13 +44,50 @@ public:
 	void TryBindAbilitySystem();
 
 
-	bool AbilityDamageBoxTrace(class UWvAbilityBase* Ability, const int32 EffectGroupIndex, const FVector Start, const FVector End, FVector HalfSize, const FRotator Orientation, TArray<AActor*>& ActorsToIgnore);
-	bool AbilityDamageCapsuleTrace(class UWvAbilityBase* Ability, const int32 EffectGroupIndex, const FVector Start, const FVector End, const float Radius, const float HalfHeight, const FQuat CapsuleQuat, TArray<AActor*>& ActorsToIgnore);
-	const bool BulletTraceAttackToAbilitySystemComponent(class UWvAbilityBase* Ability, const int32 WeaponID, const int32 EffectGroupIndex, TArray<FHitResult>& Hits, const FVector SourceLocation);
+	bool AbilityDamageBoxTrace(
+		class UWvAbilityBase* Ability,
+		const int32 EffectGroupIndex,
+		const FVector& Start, 
+		const FVector& End,
+		const FVector& BoxExtent,
+		const FRotator& Orientation,
+		TArray<AActor*>& ActorsToIgnore);
 
-	const bool LineOfSightTraceOuter(class UWvAbilityBase* Ability, const int32 WeaponID, const int32 EffectGroupIndex, TArray<FHitResult>& Hits, const FVector SourceLocation);
-	const bool LineOfSightTraceOuterEnvironment(class UWvAbilityBase* Ability, const int32 EffectGroupIndex, const FHitResult& HitResult, const FVector SourceLocation);
-	const bool LineOfSightTraceOuterEnvironments(class UWvAbilityBase* Ability, const int32 EffectGroupIndex, const TArray<FHitResult>& HitResults, const FVector SourceLocation);
+	bool AbilityDamageCapsuleTrace(
+		class UWvAbilityBase* Ability,
+		const int32 EffectGroupIndex, 
+		const FVector& Start, 
+		const FVector& End,
+		const float Radius, 
+		const float HalfHeight,
+		const FQuat& CapsuleQuat,
+		TArray<AActor*>& ActorsToIgnore);
+
+	const bool BulletTraceAttackToAbilitySystemComponent(
+		class UWvAbilityBase* Ability,
+		const int32 WeaponID,
+		const int32 EffectGroupIndex,
+		TArray<FHitResult>& Hits, 
+		const FVector SourceLocation);
+
+	const bool LineOfSightTraceOuter(
+		class UWvAbilityBase* Ability, 
+		const int32 WeaponID, 
+		const int32 EffectGroupIndex, 
+		TArray<FHitResult>& Hits, 
+		const FVector SourceLocation);
+
+	const bool LineOfSightTraceOuterEnvironment(
+		class UWvAbilityBase* Ability,
+		const int32 EffectGroupIndex, 
+		const FHitResult& HitResult, 
+		const FVector SourceLocation);
+
+	const bool LineOfSightTraceOuterEnvironments(
+		class UWvAbilityBase* Ability, 
+		const int32 EffectGroupIndex, 
+		const TArray<FHitResult>& HitResults,
+		const FVector SourceLocation);
 
 	UFUNCTION(BlueprintCallable)
 	FGameplayTag GetHitReactFeature() const;
@@ -74,7 +111,7 @@ public:
 	FGameplayTag GetWeaknessHitReactFeature() const;
 	const bool HasEnvironmentFilterClass(const FHitResult& HitResult);
 
-	const FVector GetFormationPoint(const APawn* InPawn);
+	const FVector GetSquadPoint(const APawn* InPawn);
 
 	bool CanFollow() const;
 
@@ -110,14 +147,40 @@ public:
 
 	bool HasAttackTarget() const;
 
-	FPawnAttackParam GetWeaponAttackInfo() const;
+	const FPawnAttackParam& GetWeaponAttackInfo() const;
 #pragma endregion
 
 private:
-	void BoxTraceMulti(TArray<FWvBattleDamageAttackTargetInfo>& HitTargetInfos, const FVector Start, const FVector End, const FVector HalfSize, const FRotator Orientation, const TArray<AActor*>& ActorsToIgnore);
-	void CapsuleTraceMulti(TArray<FWvBattleDamageAttackTargetInfo>& HitTargetInfos, const FVector Start, const FVector End, const float Radius, const float HalfHeight, const FQuat CapsuleFquat, const TArray<AActor*>& ActorsToIgnore);
-	void AbilityTraceAttackToASC(class UWvAbilityBase* Ability, const int32 EffectGroupIndex, TArray<FWvBattleDamageAttackTargetInfo> HitTargetInfos, const FVector SourceLocation);
-	void AttackToASC(const FWvBattleDamageAttackSourceInfo SourceInfo, TArray<FWvBattleDamageAttackTargetInfo> HitInfos, class UWvAbilityEffectDataAsset* EffectDA, const int32 EffectGroupIndex, const FVector SourceLocation);
+	void BoxTraceMulti(
+		TArray<FWvBattleDamageAttackTargetInfo>& HitTargetInfos, 
+		const FVector& Start,
+		const FVector& End,
+		const FVector& HalfSize,
+		const FRotator& Orientation,
+		const TArray<AActor*>& ActorsToIgnore);
+
+	void CapsuleTraceMulti(
+		TArray<FWvBattleDamageAttackTargetInfo>& HitTargetInfos, 
+		const FVector& Start,
+		const FVector& End,
+		const float Radius, 
+		const float HalfHeight, 
+		const FQuat& CapsuleFquat,
+		const TArray<AActor*>& ActorsToIgnore);
+
+	void AbilityTraceAttackToASC(
+		class UWvAbilityBase* Ability,
+		const int32 EffectGroupIndex,
+		TArray<FWvBattleDamageAttackTargetInfo> HitTargetInfos,
+		const FVector& SourceLocation);
+
+	void AttackToASC(
+		const FWvBattleDamageAttackSourceInfo SourceInfo,
+		TArray<FWvBattleDamageAttackTargetInfo>& HitInfos, 
+		class UWvAbilityEffectDataAsset* EffectDA, 
+		const int32 EffectGroupIndex,
+		const FVector& SourceLocation);
+
 	void HitResultEnemyFilter(TArray<FHitResult>& Hits, TArray<FWvBattleDamageAttackTargetInfo>& HitTargetInfos);
 
 	UFUNCTION()

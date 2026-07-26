@@ -72,7 +72,7 @@ public:
 	FName GetWeaponName() const;
 	int32 GetPriority() const;
 	FVector2D GetAttackRange() const;
-	FPawnAttackParam GetWeaponAttackInfo() const;
+	const FPawnAttackParam& GetWeaponAttackInfo() const;
 	float GetWeaponTraceRange() const;
 
 

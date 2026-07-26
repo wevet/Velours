@@ -53,15 +53,15 @@ enum class ELSCardinalDirection : uint8
 UENUM(BlueprintType)
 enum class ELSOverlayState : uint8
 {
-	None UMETA(DisplayName = "None"),
-	Injured UMETA(DisplayName = "Injured"), // not use
-	Rifle UMETA(DisplayName = "Rifle"),
-	Pistol1H UMETA(DisplayName = "Pistol1H"),
-	Pistol2H UMETA(DisplayName = "Pistol2H"),
-	Binoculars UMETA(DisplayName = "Binoculars"),
-	Knife UMETA(DisplayName = "Knife"),
-	Mass UMETA(DisplayName = "Mass"),
-	//ShotGun UMETA(DisplayName = "ShotGun"),
+	None,
+	Pistol,
+	Rifle,
+	ShotGun,
+	SniperRifle,
+	Knife,
+	Throw,
+	Binoculars,
+	Max,
 };
 
 UENUM(BlueprintType)
@@ -78,12 +78,14 @@ enum class EAccessoryType : uint8
 UENUM(BlueprintType)
 enum class EAttackWeaponState : uint8
 {
-	EmptyWeapon UMETA(DisplayName = "EmptyWeapon"),
-	Gun UMETA(DisplayName = "Gun"),
-	Rifle UMETA(DisplayName = "Rifle"),
-	Knife UMETA(DisplayName = "Knife"),
-	Bomb UMETA(DisplayName = "Bomb"),
-	Other UMETA(DisplayName = "Other"),
+	EmptyWeapon,
+	Gun,
+	Rifle,
+	SniperRifle,
+	ShotGun,
+	Knife,
+	Throw,
+	Other,
 	InValid UMETA(Hidden)
 };
 

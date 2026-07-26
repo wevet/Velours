@@ -40,6 +40,7 @@ class UMinimapMarkerComponent;
 class UChooserTable;
 class UBehaviorTree;
 class UCharacterMoverComponent;
+class UHitTargetComponent;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogBaseCharacter, All, All)
 
@@ -269,6 +270,8 @@ public:
 	bool IsLeader() const;
 	bool IsTargetLock() const;
 
+	void ApplyOverlayStateChangeFromCombat(const ELSOverlayState CurrentOverlay);
+
 	UFUNCTION(BlueprintCallable, Category = Action)
 	const bool OverlayStateChange(const ELSOverlayState CurrentOverlay);
 
@@ -301,6 +304,7 @@ public:
 	void FindNearestTarget(const FAttackMotionWarpingData& AttackMotionWarpingData);
 
 #pragma endregion
+
 
 #pragma region VehicleAction
 	void BeginDrive();
@@ -400,14 +404,15 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "BaseCharacter|Load")
 	bool bIsAllowAsyncLoadComponentAssets = true;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "BaseCharacter|Load")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "BaseCharacter|Config")
 	TMap<FGameplayTag, TSoftObjectPtr<UDataAsset>> GameDataAssets;
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "BaseCharacter|Load")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "BaseCharacter|Config")
 	UAIActionStateDataAsset* AIActionStateDA;
 
-	//TObjectPtr<class UChooserTable> OverlayAnimationTable{ nullptr };
-	//TObjectPtr<class UChooserTable> FoleyAssetTable{ nullptr };
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "BaseCharacter|Chooser")
+	TObjectPtr<class UChooserTable> OverlayAnimationTable{ nullptr };
+
 #pragma endregion
 
 
@@ -429,6 +434,15 @@ protected:
 
 	UFUNCTION()
 	void OnMovementModeChanged_Callback(const FName& PreviousModeName, const FName& NewModeName);
+
+	UFUNCTION()
+	void OverlayStateChange_Callback(const ELSOverlayState PrevOverlay, const ELSOverlayState CurrentOverlay);
+
+	UFUNCTION()
+	void OnTargetLockedOn_Callback(AActor* LookOnTarget, UHitTargetComponent* TargetComponent);
+
+	UFUNCTION()
+	void OnTargetLockedOff_Callback(AActor* LookOnTarget, UHitTargetComponent* TargetComponent);
 
 
 	void SetAbilitySystemLoadState(EAbilitySystemLoadState NewState, EAbilitySystemLoadReason Reason);
