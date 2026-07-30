@@ -84,8 +84,8 @@ Plugins/NV_ACE_Reference/ThirdParty/*
 Plugins/NvAudio2FaceClaire/ThirdParty/*
 Plugins/NvAudio2FaceJames/ThirdParty/*
 Plugins/NvAudio2FaceMark/ThirdParty/*
-# Content/Assets/PCG/*
-# Content/Building/*
+Content/Assets/PCG/*
+
 
 # ignore developer
 Content/Developers/*

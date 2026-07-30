@@ -85,38 +85,73 @@ static TArray<uint8> GetPCMBufferFromPrecachedSoundWave(USoundWave* SoundWave, F
 	return SampleBytes;
 }
 
-static TArray<uint8> GetPCMBufferFromStreamingSoundWave(FSoundWaveProxyPtr Proxy, FSoundQualityInfo& QualityInfo)
+static TArray<uint8> GetPCMBufferFromStreamingSoundWave(const TSharedRef<const FSoundWaveData>& SoundWaveData, FSoundQualityInfo& QualityInfo)
 {
-	check(Proxy->IsStreaming());
+	check(SoundWaveData->IsStreaming());
 
-	FName RuntimeFormat = Proxy->GetRuntimeFormat();
-	ICompressedAudioInfo* AudioInfo = IAudioInfoFactoryRegistry::Get().Create(RuntimeFormat);
+	const FName RuntimeFormat = SoundWaveData->GetRuntimeFormat();
+	TUniquePtr<ICompressedAudioInfo> AudioInfo(IAudioInfoFactoryRegistry::Get().Create(RuntimeFormat));
 
-	AudioInfo->StreamCompressedInfo(Proxy, &QualityInfo);
+	if (!AudioInfo.IsValid())
+	{
+		UE_LOG(LogACERuntime, Warning, TEXT("Unable to create compressed audio decoder for USoundWave %s, format: %s"), 
+			*SoundWaveData->GetFName().ToString(), *RuntimeFormat.ToString());
+		return {};
+	}
+
+	if (!AudioInfo->StreamCompressedInfo(SoundWaveData, &QualityInfo))
+	{
+		UE_LOG(LogACERuntime, Warning, TEXT("Unable to read compressed stream info for USoundWave %s"),
+			*SoundWaveData->GetFName().ToString());
+		return {};
+	}
+
+	if (QualityInfo.SampleDataSize <= 0)
+	{
+		UE_LOG(LogACERuntime, Warning, TEXT("Invalid PCM sample data size for USoundWave %s: %d"),
+			*SoundWaveData->GetFName().ToString(), QualityInfo.SampleDataSize);
+		return {};
+	}
+
 	TArray<uint8> SampleBytes;
 	SampleBytes.AddZeroed(QualityInfo.SampleDataSize);
+
 	int32 NumBytesStreamed = 0;
 	bool bFinished = AudioInfo->StreamCompressedData(SampleBytes.GetData(), false, SampleBytes.Num(), NumBytesStreamed);
+	TOptional<FAudioChunkHandle> LoadedChunkHandle;
 
 	if (NumBytesStreamed == 0)
 	{
 		// Streaming didn't work first time. Manually load the first chunk to prime the pump and try StreamCompressedData again
-		Proxy->GetZerothChunk(Proxy, true);
-		if (Proxy->GetNumChunks() > 1)
+		SoundWaveData->GetZerothChunk(true);
+
+		if (SoundWaveData->GetNumChunks() > 1)
 		{
 			if (FStreamingManagerCollection* StreamingMgr = IStreamingManager::Get_Concurrent())
 			{
 				IAudioStreamingManager& AudioStreamingMgr = StreamingMgr->GetAudioStreamingManager();
-				AudioStreamingMgr.GetLoadedChunk(Proxy, 1, true, true);
+				LoadedChunkHandle.Emplace(AudioStreamingMgr.GetLoadedChunk(SoundWaveData, 1, true, true));
+
+				if (!LoadedChunkHandle->IsValid())
+				{
+					UE_LOG(LogACERuntime, Warning, TEXT("Unable to load audio chunk 1 for USoundWave %s"),
+						*SoundWaveData->GetFName().ToString());
+				}
 			}
 		}
+
+		NumBytesStreamed = 0;
 		bFinished = AudioInfo->StreamCompressedData(SampleBytes.GetData(), false, SampleBytes.Num(), NumBytesStreamed);
 	}
+
+	NumBytesStreamed = FMath::Clamp(NumBytesStreamed, 0, SampleBytes.Num());
 
 	if (!bFinished)
 	{
 		// there is probably a way to get the rest of the asset here, but unless we find a case where this path is getting hit we shouldn't worry about it
-		UE_LOG(LogACERuntime, Warning, TEXT("Unable to fully decompress streaming USoundWave %s, %d/%d bytes streamed"), *Proxy->GetFName().ToString(), NumBytesStreamed, SampleBytes.Num());
+		UE_LOG(LogACERuntime, Warning, TEXT("Unable to fully decompress streaming USoundWave %s, %d/%d bytes streamed"),
+			*SoundWaveData->GetFName().ToString(), NumBytesStreamed, SampleBytes.Num());
+
 		if (NumBytesStreamed == 0)
 		{
 			return {};
@@ -127,8 +162,7 @@ static TArray<uint8> GetPCMBufferFromStreamingSoundWave(FSoundWaveProxyPtr Proxy
 	// and also, maybe the streaming just didn't work for some reason and the buffer is empty
 	if (NumBytesStreamed < SampleBytes.Num())
 	{
-		int32 NumToRemove = SampleBytes.Num() - NumBytesStreamed;
-		SampleBytes.RemoveAt(NumBytesStreamed, NumToRemove);
+		SampleBytes.SetNum(NumBytesStreamed, EAllowShrinking::No);
 	}
 
 	return SampleBytes;
@@ -207,10 +241,12 @@ bool AnimateFromSoundWave(IACEAnimDataConsumer* Consumer, USoundWave* SoundWave,
 	TArray<uint8> SampleBytes;
 	FSoundQualityInfo QualityInfo{};
 
-	FSoundWaveProxyPtr Proxy = SoundWave->CreateSoundWaveProxy();
-	if (Proxy->IsStreaming())
+	const TSharedRef<const FSoundWaveProxy> Proxy = SoundWave->GetSoundWaveProxy();
+	const TSharedRef<const FSoundWaveData> SoundWaveData = Proxy->GetSoundWaveDataRef();
+
+	if (SoundWaveData->IsStreaming())
 	{
-		SampleBytes = GetPCMBufferFromStreamingSoundWave(Proxy, QualityInfo);
+		SampleBytes = GetPCMBufferFromStreamingSoundWave(SoundWaveData, QualityInfo);
 	}
 	else if (SoundWave->GetLoadingBehavior() == ESoundWaveLoadingBehavior::ForceInline)
 	{
