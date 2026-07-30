@@ -266,7 +266,10 @@ void UFieldInstanceSubsystem::OnFoleyEventDataAssetsLoaded()
 	}
 }
 
-const FFoleyBaseAsset& UFieldInstanceSubsystem::GetFoleyBaseAsset(const FGameplayTag SurfaceTag, TEnumAsByte<EPhysicalSurface> SurfaceTypeInEditor, bool& bOutFound) const
+const FFoleyBaseAsset& UFieldInstanceSubsystem::GetFoleyBaseAsset(
+	const FGameplayTag& SurfaceTag,
+	TEnumAsByte<EPhysicalSurface> SurfaceTypeInEditor,
+	bool& bOutFound) const
 {
 	bOutFound = false;
 

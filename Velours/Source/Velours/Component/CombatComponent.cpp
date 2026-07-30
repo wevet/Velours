@@ -36,6 +36,7 @@
 #include UE_INLINE_GENERATED_CPP_BY_NAME(CombatComponent)
 
 //using namespace CharacterDebug;
+DEFINE_LOG_CATEGORY(LogCombat)
 
 
 UCombatComponent::UCombatComponent(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer)
@@ -248,6 +249,7 @@ bool UCombatComponent::AbilityDamageCapsuleTrace(
 	{
 		ActorsToIgnore.Add(Info.Target);
 	}
+
 	AbilityTraceAttackToASC(Ability, EffectGroupIndex, HitTargetInfos, Start);
 	return true;
 }
@@ -310,7 +312,14 @@ void UCombatComponent::CapsuleTraceMulti(
 		true, 
 		GetOwner());
 
-	GetWorld()->SweepMultiByChannel(HitResults, Start, End, CapsuleFquat, CollisionChannel, FCollisionShape::MakeCapsule(Radius, HalfHeight), Params);
+	GetWorld()->SweepMultiByChannel(
+		HitResults,
+		Start, 
+		End,
+		CapsuleFquat,
+		CollisionChannel,
+		FCollisionShape::MakeCapsule(Radius, HalfHeight),
+		Params);
 
 #if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 	//bIsDebugTrace = (CVarDebugCombatSystem.GetValueOnGameThread() > 0);
@@ -388,7 +397,7 @@ void UCombatComponent::HitResultEnemyFilter(TArray<FHitResult>& Hits, TArray<FWv
 					// Character hit specifies the use of PhysicsAsset collision box
 					if (HitComponent == nullptr || !HitComponent->GetClass()->IsChildOf(USkeletalMeshComponent::StaticClass()))
 					{
-						UE_LOG(LogTemp, Warning, TEXT("Character hit specifies the use of PhysicsAsset collision box"));
+						UE_LOG(LogCombat, Warning, TEXT("Character hit specifies the use of PhysicsAsset collision box"));
 						continue;
 					}
 				}
@@ -405,7 +414,7 @@ void UCombatComponent::HitResultEnemyFilter(TArray<FHitResult>& Hits, TArray<FWv
 			}
 			else
 			{
-				//UE_LOG(LogTemp, Warning, TEXT("not enemy ?? => %s, function => %s"), *GetNameSafe(HitActor), *FString(__FUNCTION__));
+				UE_LOG(LogCombat, Verbose, TEXT("not enemy ?? => %s, function => %s"), *GetNameSafe(HitActor), *FString(__FUNCTION__));
 			}
 		}
 
@@ -480,23 +489,12 @@ const bool UCombatComponent::LineOfSightTraceOuterEnvironment(
 {
 	if (!IsValid(HitResult.GetActor()))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("not valid HitResult GetActor => %s"), *FString(__FUNCTION__));
+		UE_LOG(LogCombat, Warning, TEXT("not valid HitResult GetActor => %s"), *FString(__FUNCTION__));
 		return false;
 	}
 
 	UCombatInstanceSubsystem::Get()->OnHitEnvironment(GetOwner(), HitResult);
 
-#if false
-	FGameplayCueParameters CueParameter;
-	CueParameter.EffectContext = ASC->MakeEffectContext();
-	CueParameter.Location = HitResult.ImpactPoint;
-	CueParameter.Normal = HitResult.ImpactNormal;
-	CueParameter.PhysicalMaterial = HitResult.PhysMaterial;
-	CueParameter.Instigator = Character;
-	ABILITY_GLOBAL()->GetGameplayCueManager()->HandleGameplayCue(HitResult.GetActor(),
-		TAG_GameplayCue_HitImpact_Environment_BulletHit, EGameplayCueEvent::Type::Executed, CueParameter);
-
-#endif
 	return true;
 }
 

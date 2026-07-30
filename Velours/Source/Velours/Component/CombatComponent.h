@@ -8,6 +8,7 @@
 #include "Character/CharacterSystemTypes.h"
 #include "Ability/WvAbilityType.h"
 #include "CombatSystemTypes.h"
+#include "Logging/LogMacros.h"
 #include "CombatComponent.generated.h"
 
 class UWvAbilityBase;
@@ -15,7 +16,7 @@ class UWvAbilitySystemComponent;
 class ABasePawn;
 class UWidgetComponent;
 
-
+DECLARE_LOG_CATEGORY_EXTERN(LogCombat, All, All)
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class VELOURS_API UCombatComponent : public UActorComponent

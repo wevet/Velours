@@ -10,6 +10,7 @@
 #include "Character/BasePawn.h"
 #include "Ability/WvGameplayCue_HitEnvironment.h"
 #include "Game/WvGameInstance.h"
+#include "Component/CombatComponent.h"
 
 #include "Kismet/KismetMathLibrary.h"
 #include "Perception/AISense_Hearing.h"
@@ -43,7 +44,7 @@ void UCombatInstanceSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 void UCombatInstanceSubsystem::Deinitialize()
 {
-	UE_LOG(LogTemp, Log, TEXT("%s"), *FString(__FUNCTION__));
+	UE_LOG(LogCombat, Log, TEXT("%s"), *FString(__FUNCTION__));
 
 }
 
@@ -77,7 +78,7 @@ void UCombatInstanceSubsystem::OnEnvironmentVFXDataAssetsLoaded()
 
 	if (EnvironmentVFXDataAsset)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Success EnvironmentVFXyDA: [%s]"), *FString(__FUNCTION__));
+		UE_LOG(LogCombat, Warning, TEXT("Success EnvironmentVFXyDA: [%s]"), *FString(__FUNCTION__));
 	}
 }
 
@@ -86,21 +87,27 @@ void UCombatInstanceSubsystem::OnHitEnvironment(const AActor* Attacker, const FH
 {
 	if (!EnvironmentVFXDataAsset)
 	{
-		UE_LOG(LogTemp, Error, TEXT("not valid EnvironmentVFXDataAsset => %s"), *FString(__FUNCTION__));
+		UE_LOG(LogCombat, Error, TEXT("not valid EnvironmentVFXDataAsset => %s"), *FString(__FUNCTION__));
 		return;
 	}
 
 	if (!Attacker->WasRecentlyRendered())
 	{
 		//Has this actor been rendered "recently"?
-		UE_LOG(LogTemp, Warning, TEXT("This actor does not appear to have been rendered recently. => %s"), *FString(__FUNCTION__));
+		UE_LOG(LogCombat, Warning, TEXT("This actor does not appear to have been rendered recently. => %s"), *FString(__FUNCTION__));
 		return;
 	}
 
-	const EPhysicalSurface HitSurfaceType = HitResult.PhysMaterial.IsValid() ? HitResult.PhysMaterial->SurfaceType.GetValue() : EPhysicalSurface::SurfaceType_Default;
+	const EPhysicalSurface HitSurfaceType = HitResult.PhysMaterial.IsValid()
+		? HitResult.PhysMaterial->SurfaceType.GetValue()
+		: EPhysicalSurface::SurfaceType_Default;
+
 	const AActor* HitTarget = HitResult.GetActor();
 	const FString SurfaceName = UWvCommonUtils::GetSurfaceName(HitSurfaceType).ToString();
-	//UE_LOG(LogTemp, Log, TEXT("found HitActor => %s, SurfaceName => %s, function => %s"), *GetNameSafe(HitTarget), *SurfaceName, *FString(__FUNCTION__));
+	UE_LOG(LogCombat, Verbose, TEXT("[%s] : found HitActor => %s, SurfaceName => %s"),
+		*FString(__FUNCTION__),
+		*GetNameSafe(HitTarget),
+		*SurfaceName);
 
 	IWvEnvironmentInterface* Interface = Cast<IWvEnvironmentInterface>(const_cast<AActor*>(HitTarget));
 	if (Interface)

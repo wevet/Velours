@@ -201,13 +201,13 @@ struct QUADRUPEDIK_API FCustomBone_FingerData
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = SkeletalControl, meta = (PinHiddenByDefault))
-	FName FingerBoneName;
+	FName FingerBoneName{NAME_None};
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = SkeletalControl, meta = (PinHiddenByDefault))
 	float TraceScale = 0.5f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = SkeletalControl, meta = (PinHiddenByDefault))
-	FVector TraceOffset;
+	FVector TraceOffset{ FVector::ZeroVector };
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = SkeletalControl, meta = (PinHiddenByDefault))
 	bool Is_Finger_Backward = false;

@@ -73,7 +73,10 @@ public:
 	void OnFoleyEventDataAssetsLoaded();
 
 
-	const FFoleyBaseAsset& GetFoleyBaseAsset(const FGameplayTag SurfaceTag, TEnumAsByte<EPhysicalSurface> SurfaceTypeInEditor, bool& bOutFound) const;
+	const FFoleyBaseAsset& GetFoleyBaseAsset(
+		const FGameplayTag& SurfaceTag, 
+		TEnumAsByte<EPhysicalSurface> SurfaceTypeInEditor,
+		bool& bOutFound) const;
 
 
 private:
