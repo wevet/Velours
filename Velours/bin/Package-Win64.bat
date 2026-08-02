@@ -6,7 +6,7 @@ set "PROJ_DIR=%~dp0.."
 set "UPROJECT_PATH=%PROJ_DIR%\Velours.uproject"
 
 REM エンジンの RunUAT パス
-set "RUN_UAT=D:\Engine\UnrealEngine\Engine\Build\BatchFiles\RunUAT.bat"
+set "RUN_UAT=C:\Program Files\Epic Games\UE_5.8\Engine\Build\BatchFiles\RunUAT.bat"
 
 REM 実行 (引数の前後の余計なスペースを削除しています)
 call "%RUN_UAT%" BuildCookRun ^

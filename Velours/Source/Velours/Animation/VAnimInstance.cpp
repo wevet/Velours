@@ -23,6 +23,44 @@
 
 DEFINE_LOG_CATEGORY(LogVAnimation)
 
+
+void FCharacterOverlayInfo::ChooseStanceMode(const bool bIsStanding)
+{
+	BasePose_N = bIsStanding ? 1.0f : 0.0f;
+	BasePose_CLF = bIsStanding ? 0.0f : 1.0f;
+}
+
+void FCharacterOverlayInfo::ModifyAnimCurveValue(const UAnimInstance* AnimInstance)
+{
+	Spine_Add = AnimInstance->GetCurveValue(FName(TEXT("Layering_Spine_Add")));
+	Head_Add = AnimInstance->GetCurveValue(FName(TEXT("Layering_Head_Add")));
+	Arm_L_Add = AnimInstance->GetCurveValue(FName(TEXT("Layering_Arm_L_Add")));
+	Arm_R_Add = AnimInstance->GetCurveValue(FName(TEXT("Layering_Arm_R_Add")));
+	Hand_L = AnimInstance->GetCurveValue(FName(TEXT("Layering_Hand_L")));
+	Hand_R = AnimInstance->GetCurveValue(FName(TEXT("Layering_Hand_R")));
+	Arm_L_LS = AnimInstance->GetCurveValue(FName(TEXT("Layering_Arm_L_LS")));
+	Arm_R_LS = AnimInstance->GetCurveValue(FName(TEXT("Layering_Arm_R_LS")));
+	Arm_L_MS = FMath::Clamp((1.0f - Arm_L_LS), 0.0f, 1.0f);
+	Arm_R_MS = FMath::Clamp((1.0f - Arm_R_LS), 0.0f, 1.0f);
+
+	auto Value_L = AnimInstance->GetCurveValue(FName(TEXT("Enable_HandIK_L")));
+	Enable_HandIK_L = FMath::Lerp(0.f, Value_L, AnimInstance->GetCurveValue(FName(TEXT("Layering_Arm_L"))));
+
+	auto Value_R = AnimInstance->GetCurveValue(FName(TEXT("Enable_HandIK_R")));
+	Enable_HandIK_R = FMath::Lerp(0.f, Value_R, AnimInstance->GetCurveValue(FName(TEXT("Layering_Arm_R"))));
+}
+
+void FCharacterOverlayInfo::ShowDebugLog()
+{
+	UE_LOG(LogVAnimation, Log, 
+		TEXT("[%s] => Spine_Add : %.2f, Head_Add : %.2f, Arm_L_Add : %.2f, Arm_R_Add : %.2f, Hand_L : %.2f, Hand_R : %.2f"), 
+		*FString(__FUNCTION__),
+		Spine_Add, Head_Add, 
+		Arm_L_Add, Arm_R_Add, 
+		Hand_L, Hand_R);
+}
+
+
 UVAnimInstance::UVAnimInstance()
 {
 }
@@ -50,6 +88,14 @@ void UVAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 void UVAnimInstance::NativeThreadSafeUpdateAnimation(float DeltaSeconds)
 {
 	Super::NativeThreadSafeUpdateAnimation(DeltaSeconds);
+
+
+	CharacterOverlayInfo.ModifyAnimCurveValue(this);
+
+	if (bIsDebugLogOverlay && TryGetPawnOwner())
+	{
+		CharacterOverlayInfo.ShowDebugLog();
+	}
 }
 
 
