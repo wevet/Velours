@@ -9,7 +9,23 @@
 			"Type": "Runtime",
 			"LoadingPhase": "Default",
 			"AdditionalDependencies": [
-				"Engine"
+				"Engine",
+				"GameplayAbilities",
+				"WvAbilitySystem",
+				"AIModule",
+				"ChaosVehicles",
+				"UMG",
+				"CoreUObject"
+			]
+		},
+		{
+			"Name": "VeloursEditor",
+			"Type": "Editor",
+			"LoadingPhase": "Default",
+			"AdditionalDependencies": [
+				"Engine",
+				"UnrealEd",
+				"Blutility"
 			]
 		}
 	],
