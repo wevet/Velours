@@ -85,19 +85,13 @@ void UVAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 {
 	Super::NativeUpdateAnimation(DeltaSeconds);
 
-	if (!IsValid(TryGetPawnOwner()))
-	{
-		return;
-	}
+	TryGetCharacterMoverComponent();
 
-	APawn* Pawn = TryGetPawnOwner();
-	if (Pawn)
-	{
-		if (!IsValid(CharacterMoverComponent))
-		{
-			CharacterMoverComponent = Pawn->FindComponentByClass<UCharacterMoverComponent>();
-		}
-	}
+}
+
+void UVAnimInstance::NativeThreadSafeUpdateAnimation(float DeltaSeconds)
+{
+	Super::NativeThreadSafeUpdateAnimation(DeltaSeconds);
 
 
 	CharacterOverlayInfo.ModifyAnimCurveValue(this);
@@ -114,14 +108,21 @@ void UVAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	}
 }
 
-void UVAnimInstance::NativeThreadSafeUpdateAnimation(float DeltaSeconds)
+void UVAnimInstance::TryGetCharacterMoverComponent()
 {
-	Super::NativeThreadSafeUpdateAnimation(DeltaSeconds);
+	if (IsValid(CharacterMoverComponent))
+	{
+		return;
+	}
 
+	APawn* Pawn = TryGetPawnOwner();
+	if (!IsValid(Pawn))
+	{
+		return;
+	}
 
-
+	CharacterMoverComponent = Pawn->FindComponentByClass<UCharacterMoverComponent>();
 }
-
 
 FVector UVAnimInstance::GetPredictionStopLocation(const FVector& CurrentLocation) const
 {

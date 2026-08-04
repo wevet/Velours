@@ -124,6 +124,9 @@ protected:
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "VAnimInstance|OverlayPose")
 	bool bIsDebugLogOverlay{false};
+
+private:
+	void TryGetCharacterMoverComponent();
 };
 
 
