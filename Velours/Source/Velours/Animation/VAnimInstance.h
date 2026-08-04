@@ -14,6 +14,8 @@
 
 #include "VAnimInstance.generated.h"
 
+class UCharacterMoverComponent;
+
 
 USTRUCT(BlueprintType)
 struct VELOURS_API FCharacterOverlayInfo
@@ -116,6 +118,9 @@ private:
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "VAnimInstance|OverlayPose")
 	FCharacterOverlayInfo CharacterOverlayInfo;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "VAnimInstance|Component")
+	TObjectPtr<class UCharacterMoverComponent> CharacterMoverComponent{nullptr};
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "VAnimInstance|OverlayPose")
 	bool bIsDebugLogOverlay{false};

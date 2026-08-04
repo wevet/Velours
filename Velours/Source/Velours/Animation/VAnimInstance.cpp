@@ -16,7 +16,8 @@
 #include "Animation/AnimNode_LinkedAnimLayer.h"
 #include "Animation/BlendSpace.h"
 
-#include "MoverComponent.h"
+//#include "MoverComponent.h"
+#include "CharacterMoverComponent.h"
 #include "DefaultMovementSet/Settings/CommonLegacyMovementSettings.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(VAnimInstance)
@@ -83,6 +84,34 @@ void UVAnimInstance::NativeBeginPlay()
 void UVAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 {
 	Super::NativeUpdateAnimation(DeltaSeconds);
+
+	if (!IsValid(TryGetPawnOwner()))
+	{
+		return;
+	}
+
+	APawn* Pawn = TryGetPawnOwner();
+	if (Pawn)
+	{
+		if (!IsValid(CharacterMoverComponent))
+		{
+			CharacterMoverComponent = Pawn->FindComponentByClass<UCharacterMoverComponent>();
+		}
+	}
+
+
+	CharacterOverlayInfo.ModifyAnimCurveValue(this);
+
+	if (IsValid(CharacterMoverComponent))
+	{
+		const bool bIsCrouching = CharacterMoverComponent->IsCrouching();
+		CharacterOverlayInfo.ChooseStanceMode(!bIsCrouching);
+	}
+
+	if (bIsDebugLogOverlay)
+	{
+		CharacterOverlayInfo.ShowDebugLog();
+	}
 }
 
 void UVAnimInstance::NativeThreadSafeUpdateAnimation(float DeltaSeconds)
@@ -90,12 +119,7 @@ void UVAnimInstance::NativeThreadSafeUpdateAnimation(float DeltaSeconds)
 	Super::NativeThreadSafeUpdateAnimation(DeltaSeconds);
 
 
-	CharacterOverlayInfo.ModifyAnimCurveValue(this);
 
-	if (bIsDebugLogOverlay && TryGetPawnOwner())
-	{
-		CharacterOverlayInfo.ShowDebugLog();
-	}
 }
 
 
