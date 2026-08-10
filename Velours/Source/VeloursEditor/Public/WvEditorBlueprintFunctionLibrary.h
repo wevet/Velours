@@ -17,6 +17,9 @@ class VELOURSEDITOR_API UWvEditorBlueprintFunctionLibrary : public UBlueprintFun
 	
 public:
 	UFUNCTION(BlueprintCallable)
+	static bool RestoreUEFNAnimationImportPathsAndReimport();
+
+	UFUNCTION(BlueprintCallable)
 	static bool ValidateUEFNMannequinAnimationImportPaths();
 
 	UFUNCTION(BlueprintCallable)

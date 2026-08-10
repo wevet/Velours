@@ -25,6 +25,173 @@
 #include "Misc/Paths.h"
 
 
+bool UWvEditorBlueprintFunctionLibrary::RestoreUEFNAnimationImportPathsAndReimport()
+{
+	const FString GameRoot = TEXT("/Game/Characters/UEFN_Mannequin/Animations");
+	const FString ImportRoot = TEXT("D:/Work/UE5/Characters/M_UEFN/Animation/MotionMatching");
+
+	const FName GameRootName(*GameRoot);
+
+	FAssetRegistryModule& AssetRegistryModule =
+		FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
+
+	TArray<FAssetData> AssetList;
+	AssetRegistryModule.Get().GetAssetsByPath(
+		GameRootName,
+		AssetList,
+		true,
+		false);
+
+	int32 AnimSequenceCount = 0;
+	int32 ReimportedCount = 0;
+	int32 ErrorCount = 0;
+
+	for (const FAssetData& AssetData : AssetList)
+	{
+		UAnimSequence* AnimSequence = Cast<UAnimSequence>(AssetData.GetAsset());
+		if (!AnimSequence)
+		{
+			continue;
+		}
+
+		++AnimSequenceCount;
+
+		if (!AnimSequence->AssetImportData)
+		{
+			UE_LOG(
+				LogTemp,
+				Error,
+				TEXT("[RestoreAnimationImportPath] AssetImportData is null: %s"),
+				*AnimSequence->GetPathName());
+
+			++ErrorCount;
+			continue;
+		}
+
+		FString PackagePath = AssetData.PackagePath.ToString();
+
+		if (!PackagePath.StartsWith(GameRoot, ESearchCase::IgnoreCase))
+		{
+			UE_LOG(
+				LogTemp,
+				Error,
+				TEXT("[RestoreAnimationImportPath] Unexpected package path: %s"),
+				*PackagePath);
+
+			++ErrorCount;
+			continue;
+		}
+
+		FString RelativeDirectory = PackagePath.RightChop(GameRoot.Len());
+		RelativeDirectory.RemoveFromStart(TEXT("/"));
+
+		FString SourceFilename;
+
+		if (RelativeDirectory.IsEmpty())
+		{
+			SourceFilename = FPaths::Combine(
+				ImportRoot,
+				AnimSequence->GetName() + TEXT(".fbx"));
+		}
+		else
+		{
+			SourceFilename = FPaths::Combine(
+				ImportRoot,
+				RelativeDirectory,
+				AnimSequence->GetName() + TEXT(".fbx"));
+		}
+
+		FPaths::NormalizeFilename(SourceFilename);
+
+		if (!FPaths::FileExists(SourceFilename))
+		{
+			UE_LOG(
+				LogTemp,
+				Error,
+				TEXT("[RestoreAnimationImportPath] FBX not found: Asset=%s, ExpectedFBX=%s"),
+				*AnimSequence->GetPathName(),
+				*SourceFilename);
+
+			++ErrorCount;
+			continue;
+		}
+
+		AnimSequence->Modify();
+		AnimSequence->AssetImportData->Modify();
+
+		AnimSequence->AssetImportData->UpdateFilenameOnly(SourceFilename);
+
+		AnimSequence->MarkPackageDirty();
+
+		UE_LOG(
+			LogTemp,
+			Log,
+			TEXT("[RestoreAnimationImportPath] Assigned: %s -> %s"),
+			*AnimSequence->GetPathName(),
+			*SourceFilename);
+
+		const bool bReimported =
+			FReimportManager::Instance()->Reimport(
+				AnimSequence,
+				false);
+
+		if (!bReimported)
+		{
+			UE_LOG(
+				LogTemp,
+				Error,
+				TEXT("[RestoreAnimationImportPath] Reimport failed: Asset=%s, FBX=%s"),
+				*AnimSequence->GetPathName(),
+				*SourceFilename);
+
+			++ErrorCount;
+			continue;
+		}
+
+		++ReimportedCount;
+
+		UE_LOG(
+			LogTemp,
+			Verbose,
+			TEXT("[RestoreAnimationImportPath] Reimport OK: %s"),
+			*AnimSequence->GetPathName());
+	}
+
+	if (AnimSequenceCount == 0)
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("[RestoreAnimationImportPath] No AnimSequence found under: %s"),
+			*GameRoot);
+
+		return false;
+	}
+
+	if (ErrorCount > 0)
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("[RestoreAnimationImportPath] Finished. AnimSequences=%d, Reimported=%d, Errors=%d"),
+			AnimSequenceCount,
+			ReimportedCount,
+			ErrorCount);
+
+		return false;
+	}
+
+	UE_LOG(
+		LogTemp,
+		Log,
+		TEXT("[RestoreAnimationImportPath] Finished successfully. AnimSequences=%d, Reimported=%d"),
+		AnimSequenceCount,
+		ReimportedCount);
+
+	return true;
+}
+
+
 bool UWvEditorBlueprintFunctionLibrary::ValidateUEFNMannequinAnimationImportPaths()
 {
 	const FString TargetPackagePathString = TEXT("/Game/Characters/UEFN_Mannequin/Animations");
