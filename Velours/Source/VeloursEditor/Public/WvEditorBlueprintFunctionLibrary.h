@@ -16,6 +16,16 @@ class VELOURSEDITOR_API UWvEditorBlueprintFunctionLibrary : public UBlueprintFun
 	GENERATED_BODY()
 	
 public:
+	UFUNCTION(BlueprintCallable)
+	static bool ValidateUEFNMannequinAnimationImportPaths();
+
+	UFUNCTION(BlueprintCallable)
+	static int32 ReplaceAnimationSourcePathAndReimport(
+		const FName PackagePath, 
+		const FString& OldSourceRoot, 
+		const FString& NewSourceRoot,
+		bool bReimport = true);
+
 
 	UFUNCTION(BlueprintCallable)
 	static bool Reimport(UObject* InAsset);

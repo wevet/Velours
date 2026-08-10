@@ -19,7 +19,358 @@
 #include "Animation/AnimTypes.h"
 //#include "IAnimationDataModelModule.h"     // IAnimationDataModelModule
 //#include "CurveMetaDataModel.h"           // FCurveMetaDataModel
+#include "Animation/AnimSequence.h"
+#include "EditorReimportHandler.h"
+#include "EditorFramework/AssetImportData.h"
+#include "Misc/Paths.h"
 
+
+bool UWvEditorBlueprintFunctionLibrary::ValidateUEFNMannequinAnimationImportPaths()
+{
+	const FString TargetPackagePathString = TEXT("/Game/Characters/UEFN_Mannequin/Animations");
+	const FName TargetPackagePath(*TargetPackagePathString);
+
+	const FString ExpectedImportRoot = TEXT("D:/Work/UE5/Characters/M_UEFN/Animation");
+
+	UE_LOG(
+		LogTemp,
+		Log,
+		TEXT("[ValidateAnimationImportPath] Before Search: String=%s, FName=%s, IsNone=%s"),
+		*TargetPackagePathString,
+		*TargetPackagePath.ToString(),
+		TargetPackagePath.IsNone() ? TEXT("true") : TEXT("false"));
+
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
+
+	TArray<FAssetData> AssetList;
+
+	const bool bFound = AssetRegistryModule.Get().GetAssetsByPath(
+		TargetPackagePath,
+		AssetList,
+		true,
+		false);
+
+	UE_LOG(
+		LogTemp,
+		Log,
+		TEXT("[ValidateAnimationImportPath] PackagePath=%s, GetAssetsByPath=%s, FoundAssets=%d"),
+		*TargetPackagePath.ToString(),
+		bFound ? TEXT("true") : TEXT("false"),
+		AssetList.Num());
+
+	FString NormalizedExpectedRoot = ExpectedImportRoot;
+	FPaths::NormalizeFilename(NormalizedExpectedRoot);
+	NormalizedExpectedRoot.RemoveFromEnd(TEXT("/"));
+	NormalizedExpectedRoot += TEXT("/");
+
+	int32 AnimSequenceCount = 0;
+	int32 ValidCount = 0;
+	int32 ErrorCount = 0;
+
+	for (const FAssetData& AssetData : AssetList)
+	{
+		UAnimSequence* AnimSequence = Cast<UAnimSequence>(AssetData.GetAsset());
+		if (!AnimSequence)
+		{
+			continue;
+		}
+
+		++AnimSequenceCount;
+
+		if (!AnimSequence->AssetImportData)
+		{
+			UE_LOG(
+				LogTemp,
+				Error,
+				TEXT("[ValidateAnimationImportPath] AssetImportData is null: %s"),
+				*AnimSequence->GetPathName());
+
+			++ErrorCount;
+			continue;
+		}
+
+		FString ImportFilename = AnimSequence->AssetImportData->GetFirstFilename();
+
+		if (ImportFilename.IsEmpty())
+		{
+			UE_LOG(
+				LogTemp,
+				Error,
+				TEXT("[ValidateAnimationImportPath] Import path is empty: %s"),
+				*AnimSequence->GetPathName());
+
+			++ErrorCount;
+			continue;
+		}
+
+		FPaths::NormalizeFilename(ImportFilename);
+
+		if (!ImportFilename.StartsWith(NormalizedExpectedRoot, ESearchCase::IgnoreCase))
+		{
+			UE_LOG(
+				LogTemp,
+				Error,
+				TEXT("[ValidateAnimationImportPath] Invalid import path: Asset=%s, Import=%s, ExpectedRoot=%s"),
+				*AnimSequence->GetPathName(),
+				*ImportFilename,
+				*NormalizedExpectedRoot);
+
+			++ErrorCount;
+			continue;
+		}
+
+		UE_LOG(
+			LogTemp,
+			Verbose,
+			TEXT("[ValidateAnimationImportPath] OK: %s -> %s"),
+			*AnimSequence->GetPathName(),
+			*ImportFilename);
+
+		++ValidCount;
+	}
+
+	if (AssetList.IsEmpty())
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("[ValidateAnimationImportPath] No assets found under: %s"),
+			*TargetPackagePath.ToString());
+
+		return false;
+	}
+
+	if (AnimSequenceCount == 0)
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("[ValidateAnimationImportPath] Assets found, but no AnimSequence found. Assets=%d, Path=%s"),
+			AssetList.Num(),
+			*TargetPackagePath.ToString());
+
+		return false;
+	}
+
+	if (ErrorCount > 0)
+	{
+		UE_LOG(
+			LogTemp,
+			Error,
+			TEXT("[ValidateAnimationImportPath] Finished. Assets=%d, AnimSequences=%d, Valid=%d, Errors=%d"),
+			AssetList.Num(),
+			AnimSequenceCount,
+			ValidCount,
+			ErrorCount);
+
+		return false;
+	}
+
+	UE_LOG(
+		LogTemp,
+		Verbose,
+		TEXT("[ValidateAnimationImportPath] Finished. All animations are valid. AnimSequences=%d"),
+		AnimSequenceCount);
+
+	return true;
+}
+
+int32 UWvEditorBlueprintFunctionLibrary::ReplaceAnimationSourcePathAndReimport(
+	const FName PackagePath,
+	const FString& OldSourceRoot,
+	const FString& NewSourceRoot,
+	const bool bReimport)
+{
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>("AssetRegistry");
+
+	TArray<FAssetData> Assets;
+	AssetRegistryModule.Get().GetAssetsByPath(PackagePath, Assets, true, true);
+
+	FString NormalizedOldRoot = OldSourceRoot;
+	FString NormalizedNewRoot = NewSourceRoot;
+	FPaths::NormalizeFilename(NormalizedOldRoot);
+	FPaths::NormalizeFilename(NormalizedNewRoot);
+	NormalizedOldRoot.RemoveFromStart(TEXT("/"));
+	NormalizedOldRoot.RemoveFromEnd(TEXT("/"));
+	NormalizedNewRoot.RemoveFromEnd(TEXT("/"));
+
+	int32 AnimCount = 0;
+	int32 EmptyCount = 0;
+	int32 RootNotFoundCount = 0;
+	int32 MissingFileCount = 0;
+	int32 ReimportFailedCount = 0;
+	int32 UpdatedCount = 0;
+
+	for (const FAssetData& AssetData : Assets)
+	{
+		UAnimSequence* AnimSequence = Cast<UAnimSequence>(AssetData.GetAsset());
+		if (!AnimSequence)
+		{
+			continue;
+		}
+
+		++AnimCount;
+
+		UAssetImportData* ImportData = AnimSequence->AssetImportData;
+		if (!ImportData)
+		{
+			++EmptyCount;
+			UE_LOG(LogTemp, Warning, TEXT("[ReplaceAnimSource] AssetImportData is null: %s"), *AnimSequence->GetPathName());
+			continue;
+		}
+
+		const FAssetImportInfo& SourceData = ImportData->GetSourceData();
+		if (SourceData.SourceFiles.IsEmpty())
+		{
+			++EmptyCount;
+			UE_LOG(LogTemp, Warning, TEXT("[ReplaceAnimSource] Source path is empty: %s"), *AnimSequence->GetPathName());
+			continue;
+		}
+
+		FString StoredFilename = SourceData.SourceFiles[0].RelativeFilename;
+		FPaths::NormalizeFilename(StoredFilename);
+
+		if (StoredFilename.IsEmpty())
+		{
+			++EmptyCount;
+			UE_LOG(LogTemp, Warning, TEXT("[ReplaceAnimSource] Stored source path is empty: %s"), *AnimSequence->GetPathName());
+			continue;
+		}
+
+		const int32 RootIndex = StoredFilename.Find(
+			NormalizedOldRoot,
+			ESearchCase::IgnoreCase,
+			ESearchDir::FromStart);
+
+		if (RootIndex == INDEX_NONE)
+		{
+			++RootNotFoundCount;
+			UE_LOG(
+				LogTemp,
+				Warning,
+				TEXT("[ReplaceAnimSource] Root not found:\nAsset: %s\nStored: %s\nResolved: %s\nOldRoot: %s"),
+				*AnimSequence->GetPathName(),
+				*StoredFilename,
+				*ImportData->GetFirstFilename(),
+				*NormalizedOldRoot);
+			continue;
+		}
+
+		FString RelativePath = StoredFilename.Mid(RootIndex + NormalizedOldRoot.Len());
+		RelativePath.RemoveFromStart(TEXT("/"));
+
+		// 元FBXソースにだけ存在する "FBX" ディレクトリを除去
+		TArray<FString> PathParts;
+		RelativePath.ParseIntoArray(PathParts, TEXT("/"), true);
+		PathParts.RemoveAll([](const FString& Part)
+			{
+				return Part.Equals(TEXT("FBX"), ESearchCase::IgnoreCase);
+			});
+
+		RelativePath = FString::Join(PathParts, TEXT("/"));
+
+		FString NewFilename = FPaths::Combine(NormalizedNewRoot, RelativePath);
+		FPaths::NormalizeFilename(NewFilename);
+
+		if (!FPaths::FileExists(NewFilename))
+		{
+			++MissingFileCount;
+			UE_LOG(
+				LogTemp,
+				Warning,
+				TEXT("[ReplaceAnimSource] Missing:\nAsset: %s\nStored: %s\nNew: %s"),
+				*AnimSequence->GetPathName(),
+				*StoredFilename,
+				*NewFilename);
+			continue;
+		}
+
+		const FString ResolvedBefore = ImportData->GetFirstFilename();
+
+		AnimSequence->Modify();
+		ImportData->Modify();
+
+		// SourceFiles[0] のパスを更新
+		ImportData->UpdateFilenameOnly(NewFilename, 0);
+
+		AnimSequence->MarkPackageDirty();
+		ImportData->MarkPackageDirty();
+
+		// 更新後の保存値を確認
+		const FAssetImportInfo& UpdatedSourceData = ImportData->GetSourceData();
+
+		FString StoredAfter;
+		if (!UpdatedSourceData.SourceFiles.IsEmpty())
+		{
+			StoredAfter = UpdatedSourceData.SourceFiles[0].RelativeFilename;
+			FPaths::NormalizeFilename(StoredAfter);
+		}
+
+		const FString ResolvedAfter = ImportData->GetFirstFilename();
+
+		UE_LOG(
+			LogTemp,
+			Display,
+			TEXT(
+				"[ReplaceAnimSource] Updated:\n"
+				"Asset: %s\n"
+				"Stored Before: %s\n"
+				"Stored After : %s\n"
+				"Resolved Before: %s\n"
+				"Resolved After : %s"),
+			*AnimSequence->GetPathName(),
+			*StoredFilename,
+			*StoredAfter,
+			*ResolvedBefore,
+			*ResolvedAfter);
+
+		if (bReimport)
+		{
+			const bool bReimportResult = FReimportManager::Instance()->Reimport(
+				AnimSequence,
+				false,
+				false,
+				NewFilename,
+				nullptr,
+				0,
+				false,
+				true,
+				false);
+
+			if (!bReimportResult)
+			{
+				++ReimportFailedCount;
+				UE_LOG(
+					LogTemp,
+					Error,
+					TEXT("[ReplaceAnimSource] Reimport failed:\nAsset: %s\nSource: %s"),
+					*AnimSequence->GetPathName(),
+					*NewFilename);
+
+				continue;
+			}
+		}
+
+		++UpdatedCount;
+	}
+
+	UE_LOG(
+		LogTemp,
+		Display,
+		TEXT(
+			"[ReplaceAnimSource] Finished. "
+			"Scanned=%d AnimSequence=%d Empty=%d RootNotFound=%d "
+			"MissingFile=%d ReimportFailed=%d Updated=%d"),
+		Assets.Num(),
+		AnimCount,
+		EmptyCount,
+		RootNotFoundCount,
+		MissingFileCount,
+		ReimportFailedCount,
+		UpdatedCount);
+
+	return UpdatedCount;
+}
 
 void UWvEditorBlueprintFunctionLibrary::ReImportAnimation(const TArray<FName> PackagePaths)
 {
