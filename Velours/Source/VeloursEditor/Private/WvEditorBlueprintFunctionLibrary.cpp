@@ -32,8 +32,7 @@ bool UWvEditorBlueprintFunctionLibrary::RestoreUEFNAnimationImportPathsAndReimpo
 
 	const FName GameRootName(*GameRoot);
 
-	FAssetRegistryModule& AssetRegistryModule =
-		FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
+	FAssetRegistryModule& AssetRegistryModule = FModuleManager::LoadModuleChecked<FAssetRegistryModule>(TEXT("AssetRegistry"));
 
 	TArray<FAssetData> AssetList;
 	AssetRegistryModule.Get().GetAssetsByPath(
