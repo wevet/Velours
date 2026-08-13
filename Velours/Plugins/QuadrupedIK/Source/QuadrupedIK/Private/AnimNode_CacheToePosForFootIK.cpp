@@ -33,18 +33,7 @@ void FAnimNode_CacheToePosForFootIK::EvaluateSkeletalControl_AnyThread(FComponen
 	// If you want to apply translation first, you'll need two nodes: the first node handles translation, and the second node handles rotation.
 	const FBoneContainer& BoneContainer = Output.Pose.GetPose().GetBoneContainer();
 
-	if (!IsValid(PredictionFootIKComponent))
-	{
-		auto SK = Output.AnimInstanceProxy->GetSkelMeshComponent();
-
-		if (SK && SK->GetOwner())
-		{
-			PredictionFootIKComponent = SK->GetOwner()->FindComponentByClass<UPredictionFootIKComponent>();
-		}
-	}
-
-
-	if (IsValid(PredictionFootIKComponent))
+	if (PredictionFootIKComponent)
 	{
 		FCompactPoseBoneIndex RightToeCompactPoseBone = RightToe.GetCompactPoseIndex(BoneContainer);
 		FCompactPoseBoneIndex LeftToeCompactPoseBone = LeftToe.GetCompactPoseIndex(BoneContainer);
@@ -71,6 +60,14 @@ void FAnimNode_CacheToePosForFootIK::Initialize_AnyThread(const FAnimationInitia
 {
 	DECLARE_SCOPE_HIERARCHICAL_COUNTER_ANIMNODE(Initialize_AnyThread)
 	Super::Initialize_AnyThread(Context);
+
+
+	auto SK = Context.AnimInstanceProxy->GetSkelMeshComponent();
+
+	if (SK && SK->GetOwner())
+	{
+		PredictionFootIKComponent = SK->GetOwner()->FindComponentByClass<UPredictionFootIKComponent>();
+	}
 
 
 }

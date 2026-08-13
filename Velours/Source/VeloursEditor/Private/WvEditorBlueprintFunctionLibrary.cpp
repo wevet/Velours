@@ -24,6 +24,7 @@
 #include "EditorFramework/AssetImportData.h"
 #include "Misc/Paths.h"
 
+#include UE_INLINE_GENERATED_CPP_BY_NAME(WvEditorBlueprintFunctionLibrary)
 
 bool UWvEditorBlueprintFunctionLibrary::RestoreUEFNAnimationImportPathsAndReimport()
 {
