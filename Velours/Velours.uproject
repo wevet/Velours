@@ -134,6 +134,22 @@
 			"Enabled": true
 		},
 		{
+			"Name": "ChaosMover",
+			"Enabled": true
+		},
+		{
+			"Name": "AnimationLayering",
+			"Enabled": true
+		},
+		{
+			"Name": "MoverExamples",
+			"Enabled": true
+		},
+		{
+			"Name": "MovieSceneAnimMixer",
+			"Enabled": true
+		},
+		{
 			"Name": "DrawDebugLibrary",
 			"Enabled": true
 		},
@@ -150,15 +166,15 @@
 			"Enabled": true
 		},
 		{
+			"Name": "GameplayInteractions",
+			"Enabled": true
+		},
+		{
 			"Name": "ARUtilities",
 			"Enabled": true
 		},
 		{
 			"Name": "AlembicHairImporter",
-			"Enabled": true
-		},
-		{
-			"Name": "GameplayInteractions",
 			"Enabled": true
 		},
 		{
